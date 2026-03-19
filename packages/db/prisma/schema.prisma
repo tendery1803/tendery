@@ -42,6 +42,7 @@ model Company {
   updatedAt DateTime @updatedAt
 
   users     CompanyUser[]
+  documents CompanyDocument[]
 }
 
 enum CompanyRole {
@@ -62,5 +63,55 @@ model CompanyUser {
   @@unique([companyId, userId])
   @@index([userId])
   @@index([companyId])
+}
+
+enum CompanyDocumentStatus {
+  draft
+  active
+  expired
+  archived
+}
+
+enum CompanyDocumentType {
+  charter
+  extract_egrul
+  power_of_attorney
+  license
+  certificate
+  other
+}
+
+model CompanyDocument {
+  id        String                @id @default(cuid())
+  companyId String
+  type      CompanyDocumentType
+  title     String
+  status    CompanyDocumentStatus @default(draft)
+  expiresAt DateTime?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  company   Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  versions  CompanyDocumentVersion[]
+
+  @@index([companyId])
+  @@index([companyId, type])
+  @@index([companyId, status])
+}
+
+model CompanyDocumentVersion {
+  id          String         @id @default(cuid())
+  documentId  String
+  version     Int
+  originalName String
+  contentType String
+  sizeBytes   Int
+  storageKey  String
+  uploadedAt  DateTime       @default(now())
+
+  document    CompanyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([documentId])
 }
 

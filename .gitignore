@@ -2,3 +2,9 @@ node_modules
 .env
 .env.local
 .env.*.local
+
+.pnpm-store/
+IMPLEMENTATION_STEPS.md
+
+IMPLEMENTATION_STEPS.md
+.cursor/mcp.json
