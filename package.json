@@ -1,0 +1,23 @@
+{
+  "name": "tendery",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "turbo run dev --parallel --filter=web",
+    "dev:worker": "turbo run dev --parallel --filter=worker",
+    "dev:ai-gateway": "turbo run dev --parallel --filter=ai-gateway",
+    "dev:infra": "docker compose up -d",
+    "dev:down": "docker compose down",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.6"
+  }
+}
+

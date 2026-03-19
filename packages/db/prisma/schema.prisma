@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  emailVerifiedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     Session[]
+  companyUsers CompanyUser[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  inn       String?
+  kpp       String?
+  ogrn      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     CompanyUser[]
+}
+
+enum CompanyRole {
+  member
+  admin
+}
+
+model CompanyUser {
+  id        String      @id @default(cuid())
+  companyId String
+  userId    String
+  role      CompanyRole @default(member)
+  createdAt DateTime    @default(now())
+
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@index([companyId])
+}
+
