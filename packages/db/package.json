@@ -10,9 +10,11 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
-    "typecheck": "tsc -p ./tsconfig.json --noEmit"
+    "typecheck": "tsc -p ./tsconfig.json --noEmit",
+    "bootstrap-admin": "prisma generate && node ./scripts/bootstrap-admin.mjs"
   },
   "devDependencies": {
+    "argon2": "^0.44.0",
     "prisma": "^6.19.2",
     "typescript": "^5.9.2"
   },

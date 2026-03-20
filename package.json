@@ -9,6 +9,7 @@
     "dev:ai-gateway": "turbo run dev --parallel --filter=ai-gateway",
     "dev:infra": "docker compose up -d",
     "dev:down": "docker compose down",
+    "bootstrap-admin": "pnpm -C packages/db run bootstrap-admin",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
