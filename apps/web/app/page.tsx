@@ -20,8 +20,25 @@ export default function Home() {
             <Link href="/register">Регистрация</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/dashboard">Dashboard (guarded)</Link>
+            <Link href="/dashboard">Кабинет</Link>
           </Button>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <Link className="underline hover:text-foreground" href="/tariffs">
+            Тарифы
+          </Link>
+          <Link className="underline hover:text-foreground" href="/how-it-works">
+            Как это работает
+          </Link>
+          <Link className="underline hover:text-foreground" href="/privacy">
+            Конфиденциальность
+          </Link>
+          <Link className="underline hover:text-foreground" href="/offer">
+            Оферта
+          </Link>
+          <Link className="underline hover:text-foreground" href="/contacts">
+            Контакты
+          </Link>
         </div>
       </main>
     </div>

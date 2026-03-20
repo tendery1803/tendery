@@ -12,7 +12,11 @@ const logger = pino({
 });
 
 const port = Number(process.env.PORT ?? 4010);
-const apiKey = process.env.AI_GATEWAY_API_KEY ?? "dev-ai-gateway-key-change-me";
+const apiKey = process.env.AI_GATEWAY_API_KEY?.trim();
+if (!apiKey) {
+  logger.fatal("AI_GATEWAY_API_KEY is required (set in root .env)");
+  process.exit(1);
+}
 const openaiApiKey = process.env.OPENAI_API_KEY;
 
 const openai = openaiApiKey ? new OpenAI({ apiKey: openaiApiKey }) : null;

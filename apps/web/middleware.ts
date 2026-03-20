@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Basic guard: everything under /dashboard requires auth.
-  if (pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
     if (!hasSessionCookie(req)) {
       return NextResponse.redirect(redirectToLogin(req));
     }
@@ -16,6 +16,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"]
+  matcher: ["/dashboard/:path*", "/admin", "/admin/:path*"]
 };
 

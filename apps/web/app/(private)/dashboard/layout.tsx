@@ -29,6 +29,8 @@ export default function DashboardLayout({
           <nav className="flex items-center gap-1">
             <NavLink href="/dashboard">Обзор</NavLink>
             <NavLink href="/dashboard/documents">Документы</NavLink>
+            <NavLink href="/dashboard/tenders">Закупки</NavLink>
+            <NavLink href="/dashboard/billing">Тариф</NavLink>
             <NavLink href="/dashboard/help">Справка</NavLink>
           </nav>
         </div>

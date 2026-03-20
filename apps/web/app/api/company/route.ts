@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       inn: parsed.data.inn || null,
       kpp: parsed.data.kpp || null,
       ogrn: parsed.data.ogrn || null,
+      subscription: { create: { planCode: "demo" } },
       users: {
         create: {
           userId: user.id,

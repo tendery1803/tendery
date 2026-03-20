@@ -12,11 +12,15 @@ model User {
   email        String   @unique
   passwordHash String
   emailVerifiedAt DateTime?
+  isSystemAdmin Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   sessions     Session[]
   companyUsers CompanyUser[]
+  tendersCreated Tender[]
+  auditLogs    AuditLog[] @relation("AuditActor")
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Session {
@@ -43,6 +47,9 @@ model Company {
 
   users     CompanyUser[]
   documents CompanyDocument[]
+  tenders   Tender[]
+  subscription CompanySubscription?
+  usageMonthly UsageMonthly[]
 }
 
 enum CompanyRole {
@@ -113,5 +120,205 @@ model CompanyDocumentVersion {
 
   @@unique([documentId, version])
   @@index([documentId])
+}
+
+enum TenderSourceType {
+  manual
+  url
+  file_upload
+}
+
+enum TenderStatus {
+  draft
+  active
+  archived
+}
+
+enum TenderFileStatus {
+  pending_upload
+  stored
+  registration_done
+  failed
+}
+
+enum TenderFileExtractionStatus {
+  none
+  pending
+  processing
+  done
+  failed
+  skipped_unsupported
+  quarantined
+}
+
+model Tender {
+  id              String           @id @default(cuid())
+  companyId       String
+  title           String
+  description     String?
+  sourceType      TenderSourceType
+  sourceUrl       String?
+  status          TenderStatus     @default(draft)
+  createdByUserId String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  creator User?       @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  files   TenderFile[]
+  analyses TenderAnalysis[]
+  draft    TenderDraft?
+  checklistItems TenderChecklistItem[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
+}
+
+enum TenderAnalysisStatus {
+  pending
+  processing
+  done
+  failed
+}
+
+model TenderAnalysis {
+  id        String               @id @default(cuid())
+  tenderId  String
+  status    TenderAnalysisStatus @default(pending)
+  summary   String?              @db.Text
+  model     String?
+  error     String?                @db.Text
+  rawOutput String?                @db.Text
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  tender Tender                @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  fields TenderAnalysisField[]
+
+  @@index([tenderId])
+  @@index([tenderId, status])
+}
+
+model TenderAnalysisField {
+  id         String   @id @default(cuid())
+  analysisId String
+  fieldKey   String
+  fieldLabel String
+  valueText  String   @db.Text
+  confidence Float
+  sortOrder  Int      @default(0)
+
+  analysis TenderAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId])
+}
+
+model TenderDraft {
+  id        String   @id @default(cuid())
+  tenderId  String   @unique
+  body      String   @db.Text
+  model     String?
+  error     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+}
+
+model TenderChecklistItem {
+  id        String   @id @default(cuid())
+  tenderId  String
+  itemKey   String
+  title     String
+  required  Boolean  @default(true)
+  status    String
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderId, itemKey])
+  @@index([tenderId])
+}
+
+enum BillingPlanCode {
+  demo
+  starter
+}
+
+model CompanySubscription {
+  id        String          @id @default(cuid())
+  companyId String          @unique
+  planCode  BillingPlanCode @default(demo)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model UsageMonthly {
+  id             String   @id @default(cuid())
+  companyId      String
+  yearMonth      String
+  aiAnalyzeCount Int      @default(0)
+  draftGenCount  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, yearMonth])
+  @@index([companyId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  targetType  String?
+  targetId    String?
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorUserId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TenderFile {
+  id               String           @id @default(cuid())
+  tenderId         String
+  originalName     String
+  contentType      String
+  sizeBytes        Int
+  storageKey       String
+  fileStatus       TenderFileStatus @default(pending_upload)
+  registrationNote String?
+  extractionStatus TenderFileExtractionStatus @default(none)
+  extractedText    String?        @db.Text
+  extractionError  String?
+  extractedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tender Tender @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@index([tenderId])
+  @@index([tenderId, extractionStatus])
 }
 

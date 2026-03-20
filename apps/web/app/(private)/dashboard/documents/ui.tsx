@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { formatUserError } from "@/lib/ui/format_user_error";
 
 type Company = { id: string; name: string; inn: string | null };
 
@@ -184,7 +185,7 @@ export default function DocumentsClientPage() {
 
       {error ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
+          {formatUserError(error)}
         </div>
       ) : null}
 
@@ -312,7 +313,7 @@ export default function DocumentsClientPage() {
                             <div className="space-y-0.5">
                               <div className="font-medium">v{v.version}</div>
                               <div className="text-xs text-muted-foreground">
-                                {v.originalName} · {(v.sizeBytes / 1024).toFixed(0)} KB
+                                {v.originalName} · {(v.sizeBytes / 1024).toFixed(0)} КБ
                               </div>
                             </div>
                           ) : (
@@ -320,7 +321,7 @@ export default function DocumentsClientPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
-                          {new Date(d.updatedAt).toLocaleString()}
+                          {new Date(d.updatedAt).toLocaleString("ru-RU")}
                         </td>
                       </tr>
                     );

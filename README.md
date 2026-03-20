@@ -8,7 +8,8 @@ B2B веб‑приложение для автоматизации участи
 
 ```bash
 cd /home/shylugan/tendery
-cp .env.example .env
+# Корневой `.env` (не в git): задайте POSTGRES_PASSWORD, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD,
+# DATABASE_URL, S3_* и AI_GATEWAY_API_KEY — см. docs/env.md
 docker compose up -d
 ```
 
@@ -42,12 +43,15 @@ pnpm -C apps/ai-gateway dev
 
 ## Переменные окружения
 
-- **Все токены, API-ключи и секреты хранить только в `.env`** (файл в `.gitignore`, не коммитить). Шаблон — `.env.example`.
+- **Все токены, API-ключи и секреты — только в корневом `.env`** (в `.gitignore`, не коммитить). Перечень переменных: [docs/env.md](docs/env.md).
 - **Важно по ТЗ**: продуктовый контур (`apps/web`, `apps/worker`) не должен напрямую вызывать OpenAI — только через `apps/ai-gateway`.
 
 ## Документация и ТЗ
 
 - **План реализации (10 шагов):** [docs/IMPLEMENTATION_STEPS.md](docs/IMPLEMENTATION_STEPS.md) — порядок разработки с минимумом правок в уже созданном коде.
+- **Деплой:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Миграции БД (RU):** [docs/MIGRATION_RU.md](docs/MIGRATION_RU.md)
+- **Runbook / эксплуатация:** [docs/RUNBOOK.md](docs/RUNBOOK.md)
 - **Продукт и архитектура:** `текстовое задание проекта.txt`.
 - **Фронтенд:** `текстовое задание для фронтенда.md`.
 
@@ -60,5 +64,6 @@ pnpm -C apps/ai-gateway dev
 - `packages/core`: application layer (каркас)
 - `packages/contracts`: DTO/типы (каркас)
 - `packages/integrations`: адаптеры/клиенты интеграций (в т.ч. `AiGatewayClient`)
+- `packages/extraction`: извлечение текста из файлов закупок (PDF, DOCX, DOC, XLS/XLSX, ZIP, изображения + опциональный OCR)
 - `docker-compose.yml`: Postgres + Redis + MinIO (S3)
 

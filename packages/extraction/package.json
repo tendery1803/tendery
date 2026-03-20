@@ -1,0 +1,25 @@
+{
+  "name": "@tendery/extraction",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1",
+    "word-extractor": "^1.0.4",
+    "xlsx": "^0.18.5"
+  },
+  "optionalDependencies": {
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/pdf-parse": "^1.1.4",
+    "typescript": "^5.9.2"
+  }
+}

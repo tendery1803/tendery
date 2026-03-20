@@ -1,16 +1,24 @@
+import Link from "next/link";
+
 export default function HelpPage() {
   return (
     <section className="space-y-4">
       <h1 className="text-xl font-semibold">Справка</h1>
       <div className="space-y-2 text-sm text-muted-foreground">
         <p>
-          Этот раздел — минимальная «справка» MVP. Дальше сюда будут добавляться
-          статьи по процессу: документы компании → закупки → разбор → черновик →
-          чек-лист → экспорт.
+          Процесс: документы компании → закупки → извлечение текста (worker) → AI-разбор → черновик →
+          чек-лист → экспорт ZIP.
         </p>
         <p>
-          На текущем шаге доступен раздел «Документы»: заведите компанию, затем
-          создайте документ и загрузите его файл как версию.
+          Публичные материалы:{" "}
+          <Link className="text-primary underline" href="/how-it-works">
+            как пользоваться
+          </Link>
+          ,{" "}
+          <Link className="text-primary underline" href="/tariffs">
+            тарифы
+          </Link>
+          .
         </p>
       </div>
     </section>

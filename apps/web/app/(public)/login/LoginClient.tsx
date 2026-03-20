@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { formatUserError } from "@/lib/ui/format_user_error";
 
 function getNextPathFromLocation(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -50,7 +51,7 @@ export default function LoginClient() {
       <h1 className="text-xl font-semibold">Вход</h1>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         <label className="block space-y-1">
-          <div className="text-sm text-muted-foreground">Email</div>
+          <div className="text-sm text-muted-foreground">Эл. почта</div>
           <input
             className="h-10 w-full rounded-md border border-input bg-background px-3"
             value={email}
@@ -68,10 +69,17 @@ export default function LoginClient() {
             autoComplete="current-password"
           />
         </label>
-        {error ? <div className="text-sm text-destructive">{error}</div> : null}
+        {error ? (
+          <div className="text-sm text-destructive">{formatUserError(error)}</div>
+        ) : null}
         <Button type="submit" disabled={loading}>
           {loading ? "..." : "Войти"}
         </Button>
+        <p className="text-sm text-muted-foreground">
+          <a className="text-primary underline" href="/forgot-password">
+            Забыли пароль?
+          </a>
+        </p>
       </form>
     </main>
   );

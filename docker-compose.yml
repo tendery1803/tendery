@@ -5,14 +5,14 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: tendery
-      POSTGRES_USER: tendery
-      POSTGRES_PASSWORD: tendery
+      POSTGRES_USER: ${POSTGRES_USER:-tendery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in root .env — see docs/env.md}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tendery -d tendery"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tendery} -d tendery"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -34,8 +34,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in root .env — see docs/env.md}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in root .env — see docs/env.md}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -53,8 +53,8 @@ services:
       minio:
         condition: service_started
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in root .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in root .env}
       S3_BUCKET_UPLOADS: ${S3_BUCKET_UPLOADS:-tendery-uploads}
     entrypoint: >
       /bin/sh -c "
@@ -68,4 +68,3 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
-

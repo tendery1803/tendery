@@ -8,6 +8,9 @@
   "scripts": {
     "lint": "echo \"(lint via repo root)\"",
     "typecheck": "tsc -p ./tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
   }
 }
 
