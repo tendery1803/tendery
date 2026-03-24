@@ -41,6 +41,38 @@ function checklistStatusLabel(status: string) {
   }
 }
 
+/** Метка для строки таблицы разбора — только эвристика по уже сохранённым value/confidence. */
+function analysisFieldBadge(f: AnalysisField): string | null {
+  const raw = f.valueText ?? "";
+  const t = raw.trim();
+  const isEmpty = t === "" || t === "—" || t === "-" || t === "–";
+  if (isEmpty) return "Не найдено";
+
+  const tl = t.toLowerCase();
+  if (
+    /выведен|косвенн|placeholder|%\s*от|от\s+нмцк|процент\s+от/.test(tl) ||
+    (f.fieldKey === "nmck" && /%/.test(tl))
+  ) {
+    return "Вычислено";
+  }
+
+  if (f.fieldKey === "guarantees") {
+    if (
+      /обеспеч/i.test(tl) &&
+      /заявк|участник|допуск/.test(tl) &&
+      /исполнен|договор|контракт|поставк/.test(tl)
+    ) {
+      return "Смешанные данные";
+    }
+  }
+  if (f.fieldKey === "mandatory_docs" && /\bпри\s+(поставке|передаче|отгрузке)\b/i.test(t)) {
+    return "Смешанные данные";
+  }
+
+  if (f.confidence < 0.75) return "Требует проверки";
+  return null;
+}
+
 export function TenderWorkspace({
   tenderId,
   onMessage
@@ -171,19 +203,35 @@ export function TenderWorkspace({
             <table className="w-full text-xs">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="px-2 py-2">Поле</th>
-                  <th className="px-2 py-2">Значение</th>
-                  <th className="px-2 py-2">Уверенность</th>
+                  <th className="px-2 py-2 align-top">Поле</th>
+                  <th className="px-2 py-2 align-top">Значение</th>
+                  <th className="px-2 py-2 align-top">
+                    <div>Уверенность</div>
+                    <p className="mt-1 max-w-[13rem] font-normal text-[10px] leading-snug text-muted-foreground">
+                      Оценка надёжности извлечения; низкое значение — сверьте поле с исходными
+                      документами закупки.
+                    </p>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {(analysis.fields ?? []).map((f) => (
-                  <tr key={f.id} className="border-b border-border align-top">
-                    <td className="px-2 py-2 whitespace-nowrap">{f.fieldLabel}</td>
-                    <td className="px-2 py-2">{f.valueText || "—"}</td>
-                    <td className="px-2 py-2">{f.confidence.toFixed(2)}</td>
-                  </tr>
-                ))}
+                {(analysis.fields ?? []).map((f) => {
+                  const badge = analysisFieldBadge(f);
+                  return (
+                    <tr key={f.id} className="border-b border-border align-top">
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        <span>{f.fieldLabel}</span>
+                        {badge ? (
+                          <span className="ml-1.5 inline-block align-middle rounded border border-border bg-muted/50 px-1 py-px text-[10px] leading-tight text-muted-foreground">
+                            {badge}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-2">{f.valueText || "—"}</td>
+                      <td className="px-2 py-2">{f.confidence.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -182,6 +182,9 @@ importers:
         specifier: ^6.16.0
         version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
+      argon2:
+        specifier: ^0.44.0
+        version: 0.44.0
       prisma:
         specifier: ^6.19.2
         version: 6.19.2(typescript@5.9.3)
