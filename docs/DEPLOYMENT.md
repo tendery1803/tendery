@@ -13,7 +13,7 @@
 
 ## Переменные окружения
 
-Подготовьте корневой `.env` на сервере (в репозитории шаблонов со значениями нет). Секреты не коммитить. Список переменных: `docs/env.md`.
+Подготовьте корневой `.env` на сервере. В репозитории **`.env.example`** не содержит `KEY=значение` — только отсылка к `docs/env.md`; секреты не коммитить. Список имён переменных: `docs/env.md`.
 
 Обязательно для полного цикла:
 
@@ -21,6 +21,8 @@
 - `S3_*` для загрузки файлов
 - `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY` в **web** и **worker** (для шагов с AI)
 - `OPENAI_API_KEY` только в **ai-gateway**
+- Тарифы: см. `docs/env.md` (`BILLING_*_AI_OPS_PER_MONTH`, опционально `BILLING_PROVIDER=stub` только для демо).
+- Robokassa: `ROBOKASSA_*` в `docs/env.md`; Result URL — `POST /api/billing/robokassa/result`.
 
 ## Миграции
 

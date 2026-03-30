@@ -1,5 +1,8 @@
 generator client {
   provider = "prisma-client-js"
+  // В pnpm + Next (Turbopack) клиент в node_modules/.pnpm ломает require('.prisma/client/default').
+  // Локальный output в пакете — стабильный путь для всех приложений.
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -21,6 +24,9 @@ model User {
   tendersCreated Tender[]
   auditLogs    AuditLog[] @relation("AuditActor")
   passwordResetTokens PasswordResetToken[]
+  backgroundJobs BackgroundJob[]
+  aiRequestLogs AiRequestLog[]
+  payments      Payment[]
 }
 
 model Session {
@@ -42,6 +48,8 @@ model Company {
   inn       String?
   kpp       String?
   ogrn      String?
+  /// Запрет внешних AI-вызовов для компании (основной контур остаётся локальным).
+  aiExternalDisabled Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -50,6 +58,153 @@ model Company {
   tenders   Tender[]
   subscription CompanySubscription?
   usageMonthly UsageMonthly[]
+  profile   CompanyProfile?
+  backgroundJobs BackgroundJob[]
+  aiRequestLogs AiRequestLog[]
+  payments      Payment[]
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+/// Разовый платёж через Robokassa (InvId — номер счёта в шлюзе).
+model Payment {
+  id             String          @id @default(cuid())
+  invId          Int             @unique @default(autoincrement())
+  companyId      String
+  userId         String
+  planTarget     BillingPlanCode
+  amountExpected Decimal         @db.Decimal(14, 2)
+  status         PaymentStatus   @default(pending)
+  /// Снимок: оплата создавалась в тестовом режиме Robokassa.
+  testMode       Boolean         @default(false)
+  paidAt         DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CompanyProfile {
+  id            String   @id @default(cuid())
+  companyId     String   @unique
+  legalAddress  String?  @db.Text
+  postalAddress String?  @db.Text
+  phone         String?
+  email         String?
+  contactPerson String?
+  directorName  String?
+  bankDetails   Json?
+  extra         Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum BackgroundJobType {
+  tender_file_registered
+  tender_extract_text
+  tender_parse
+  tender_generate_draft
+  tender_build_checklist
+  tender_export
+  knowledge_reindex
+}
+
+enum BackgroundJobStatus {
+  pending
+  queued
+  processing
+  done
+  failed
+  retry_scheduled
+  canceled
+}
+
+model BackgroundJob {
+  id          String              @id @default(cuid())
+  type        BackgroundJobType
+  status      BackgroundJobStatus @default(pending)
+  companyId   String?
+  userId      String?
+  entityType  String?
+  entityId    String?
+  payload     Json?
+  error       String?             @db.Text
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([type, status])
+  @@index([createdAt])
+}
+
+model AiRequestLog {
+  id             String   @id @default(cuid())
+  companyId      String?
+  userId         String?
+  operation      String
+  sensitivity    String
+  /// Не «промпт замаскирован»: для строки лога см. meta.maskedColumnSemantics / payloadWasMaskedBeforeSend (без миграции).
+  masked         Boolean  @default(true)
+  model          String?
+  promptVersion  String?
+  inputCharCount Int?
+  outputTokensHint Int?
+  validationOk   Boolean?
+  meta           Json?
+  createdAt      DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@index([operation])
+}
+
+model KnowledgeMaterial {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  category  String?
+  screenKey String?
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions KnowledgeMaterialVersion[]
+
+  @@index([archived])
+  @@index([category])
+}
+
+model KnowledgeMaterialVersion {
+  id          String   @id @default(cuid())
+  materialId  String
+  version     Int
+  body        String   @db.Text
+  storageKey  String?
+  contentType String?
+  publishedAt DateTime @default(now())
+
+  material KnowledgeMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, version])
+  @@index([materialId])
 }
 
 enum CompanyRole {
@@ -82,6 +237,7 @@ enum CompanyDocumentStatus {
 enum CompanyDocumentType {
   charter
   extract_egrul
+  company_card
   power_of_attorney
   license
   certificate
@@ -190,6 +346,8 @@ model TenderAnalysis {
   model     String?
   error     String?                @db.Text
   rawOutput String?                @db.Text
+  /** Товары/характеристики и блок услуг (JSON), опционально к верхним полям fields. */
+  structuredBlock Json?
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
 
@@ -262,6 +420,8 @@ model UsageMonthly {
   id             String   @id @default(cuid())
   companyId      String
   yearMonth      String
+  /// Счётчик AI-операций по ТЗ (разбор, генерация черновика и т.д. — одна квота).
+  aiOperationsCount Int   @default(0)
   aiAnalyzeCount Int      @default(0)
   draftGenCount  Int      @default(0)
   createdAt      DateTime @default(now())

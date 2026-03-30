@@ -1,3 +1,4 @@
+import "./load-root-env";
 import { PrismaClient } from "@tendery/db";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };

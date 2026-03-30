@@ -16,7 +16,7 @@ export async function POST(
   const { fileId } = await params;
   const file = await prisma.tenderFile.findUnique({
     where: { id: fileId },
-    select: { id: true, fileStatus: true, storageKey: true }
+    select: { id: true, fileStatus: true, storageKey: true, tender: { select: { companyId: true } } }
   });
   if (!file) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
@@ -34,7 +34,18 @@ export async function POST(
     }
   });
 
-  await enqueueTenderExtractText(fileId);
+  const bgJob = await prisma.backgroundJob.create({
+    data: {
+      type: "tender_extract_text",
+      status: "queued",
+      companyId: file.tender.companyId,
+      userId: admin.user.id,
+      entityType: "TenderFile",
+      entityId: fileId,
+      payload: { source: "admin_reextract" }
+    }
+  });
+  await enqueueTenderExtractText(fileId, { backgroundJobId: bgJob.id });
   await writeAuditLog({
     actorUserId: admin.user.id,
     action: "admin.reextract_tender_file",

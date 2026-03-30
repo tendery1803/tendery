@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node --env-file=../../.env ./node_modules/tsx/dist/cli.mjs watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@tendery/core": "workspace:*",
     "@tendery/contracts": "workspace:*",
+    "https-proxy-agent": "^7.0.6",
     "openai": "^4.104.0",
     "pino": "^9.9.0",
     "pino-pretty": "^13.1.1",

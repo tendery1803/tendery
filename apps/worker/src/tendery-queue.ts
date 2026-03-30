@@ -15,11 +15,14 @@ export function getTenderyQueue(): Queue {
   return queue;
 }
 
-export async function enqueueTenderExtractText(tenderFileId: string): Promise<void> {
+export async function enqueueTenderExtractText(
+  tenderFileId: string,
+  backgroundJobId: string
+): Promise<void> {
   const q = getTenderyQueue();
   await q.add(
     "tender.extractText",
-    { tenderFileId },
+    { tenderFileId, backgroundJobId },
     {
       removeOnComplete: 100,
       removeOnFail: 500

@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { maskPiiForAi } from "@/lib/ai/mask-pii-for-ai";
 import { formatUserError } from "@/lib/ui/format_user_error";
 import { TenderWorkspace } from "./workspace";
 
@@ -87,8 +88,12 @@ export default function TenderDetailClient({ id }: { id: string }) {
   const [tender, setTender] = React.useState<TenderDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [file, setFile] = React.useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [selectionMode, setSelectionMode] = React.useState(false);
+  const [selectedUploadedIds, setSelectedUploadedIds] = React.useState<Set<string>>(() => new Set());
+  const [deleting, setDeleting] = React.useState(false);
 
   const load = React.useCallback(async (tenderId: string) => {
     const res = await fetch(`/api/tenders/${tenderId}`);
@@ -122,21 +127,85 @@ export default function TenderDetailClient({ id }: { id: string }) {
     return () => clearInterval(t);
   }, [extracting, id, load]);
 
+  const maxFileBytes = 50 * 1024 * 1024;
+
+  function toggleSelectMode() {
+    setSelectionMode((v) => !v);
+    setSelectedUploadedIds(new Set());
+  }
+
+  function toggleUploadedSelected(fileId: string) {
+    setSelectedUploadedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }
+
+  async function onDeleteSelectedUploaded() {
+    if (selectedUploadedIds.size === 0 || !tender) return;
+    if (
+      !window.confirm(
+        `Удалить выбранные файлы (${selectedUploadedIds.size})? Действие необратимо.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setDeleting(true);
+    const failures: string[] = [];
+    try {
+      for (const fileId of selectedUploadedIds) {
+        const res = await fetch(`/api/tenders/${id}/files/${fileId}`, { method: "DELETE" });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          const code =
+            json && typeof json === "object" && json && "error" in json
+              ? String((json as { error: unknown }).error)
+              : `http_${res.status}`;
+          const name = tender.files.find((f) => f.id === fileId)?.originalName ?? fileId;
+          failures.push(`${name}: ${code}`);
+        }
+      }
+      if (failures.length) setError(failures.join("\n"));
+      setSelectedUploadedIds(new Set());
+      await load(id);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function onUpload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (selectedFiles.length === 0) return;
     setError(null);
     setUploading(true);
+    const failures: string[] = [];
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      const res = await fetch(`/api/tenders/${id}/files`, { method: "POST", body: fd });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? `http_${res.status}`);
-      setFile(null);
+      for (const file of selectedFiles) {
+        if (file.size <= 0 || file.size > maxFileBytes) {
+          failures.push(`${file.name}: неверный размер (до 50 МБ)`);
+          continue;
+        }
+        try {
+          const fd = new FormData();
+          fd.set("file", file);
+          const res = await fetch(`/api/tenders/${id}/files`, { method: "POST", body: fd });
+          const json = await res.json().catch(() => null);
+          if (!res.ok) {
+            failures.push(`${file.name}: ${json && typeof json === "object" && json && "error" in json ? String((json as { error: unknown }).error) : `http_${res.status}`}`);
+          }
+        } catch {
+          failures.push(`${file.name}: ошибка сети`);
+        }
+      }
+      if (failures.length) {
+        setError(failures.join("\n"));
+      }
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       await load(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "unknown_error");
     } finally {
       setUploading(false);
     }
@@ -184,7 +253,7 @@ export default function TenderDetailClient({ id }: { id: string }) {
       </div>
 
       {error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive whitespace-pre-wrap break-words">
           {formatUserError(error)}
         </div>
       ) : null}
@@ -196,15 +265,23 @@ export default function TenderDetailClient({ id }: { id: string }) {
           <h2 className="mb-3 text-sm font-medium">Загрузить файл</h2>
           <form className="space-y-3" onSubmit={onUpload}>
             <input
+              ref={fileInputRef}
               type="file"
+              multiple
               className="block w-full text-sm"
-              onChange={(e) => setFile(e.target.files?.item(0) ?? null)}
+              onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
             />
-            <Button type="submit" disabled={!file || uploading}>
+            {selectedFiles.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Выбрано файлов: {selectedFiles.length}
+              </p>
+            ) : null}
+            <Button type="submit" disabled={selectedFiles.length === 0 || uploading}>
               {uploading ? "Загрузка…" : "Загрузить"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              До 50 МБ. Регистрация файла и извлечение текста выполняются в фоновом процессе.
+              Можно выбрать несколько файлов за раз. До 50 МБ на файл. Регистрация и извлечение текста — в
+              фоне.
             </p>
           </form>
         </div>
@@ -223,14 +300,36 @@ export default function TenderDetailClient({ id }: { id: string }) {
       <div className="rounded-lg border border-border">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <div className="text-sm font-medium">Файлы закупки</div>
-          <Button type="button" variant="outline" size="sm" onClick={() => void load(id)}>
-            Обновить
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => void load(id)}>
+              Обновить
+            </Button>
+            <Button
+              type="button"
+              variant={selectionMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={toggleSelectMode}
+            >
+              {selectionMode ? "Отмена" : "Выбрать"}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={selectedUploadedIds.size === 0 || deleting}
+              onClick={() => void onDeleteSelectedUploaded()}
+            >
+              {deleting ? "Удаление…" : "Удалить"}
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr className="border-b border-border">
+                {selectionMode ? (
+                  <th className="w-10 px-2 py-3" aria-label="Выбор" />
+                ) : null}
                 <th className="px-4 py-3">Имя</th>
                 <th className="px-4 py-3">Размер</th>
                 <th className="px-4 py-3">Файл</th>
@@ -241,13 +340,27 @@ export default function TenderDetailClient({ id }: { id: string }) {
             <tbody>
               {tender.files.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-muted-foreground" colSpan={5}>
+                  <td
+                    className="px-4 py-6 text-muted-foreground"
+                    colSpan={selectionMode ? 6 : 5}
+                  >
                     Файлов пока нет.
                   </td>
                 </tr>
               ) : (
                 tender.files.map((f) => (
                   <tr key={f.id} className="border-b border-border align-top">
+                    {selectionMode ? (
+                      <td className="px-2 py-3 align-middle">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={selectedUploadedIds.has(f.id)}
+                          onChange={() => toggleUploadedSelected(f.id)}
+                          aria-label={`Выбрать ${f.originalName}`}
+                        />
+                      </td>
+                    ) : null}
                     <td className="px-4 py-3">{f.originalName}</td>
                     <td className="px-4 py-3">{(f.sizeBytes / 1024).toFixed(0)} КБ</td>
                     <td className="px-4 py-3">
@@ -275,8 +388,8 @@ export default function TenderDetailClient({ id }: { id: string }) {
                           </summary>
                           <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-muted/30 p-2 text-xs">
                             {f.extractedText.length > 2000
-                              ? `${f.extractedText.slice(0, 2000)}…`
-                              : f.extractedText}
+                              ? `${maskPiiForAi(f.extractedText.slice(0, 2000))}…`
+                              : maskPiiForAi(f.extractedText)}
                           </pre>
                         </details>
                       ) : null}

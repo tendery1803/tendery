@@ -15,6 +15,7 @@ export async function GET() {
       id: true,
       name: true,
       inn: true,
+      aiExternalDisabled: true,
       createdAt: true,
       subscription: { select: { planCode: true } },
       _count: { select: { tenders: true, users: true } }

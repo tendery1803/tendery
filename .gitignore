@@ -1,4 +1,7 @@
 node_modules
+
+# Prisma (генерируется в packages/db)
+packages/db/src/generated/
 .env
 .env.local
 .env.*.local
@@ -8,3 +11,11 @@ IMPLEMENTATION_STEPS.md
 
 IMPLEMENTATION_STEPS.md
 .cursor/mcp.json
+
+# локальные выгрузки логов разбора (могут содержать фрагменты закупок)
+logs/
+
+.cursor/*.log
+**/.turbo/
+**/*.tsbuildinfo
+v8-compile-cache-0/

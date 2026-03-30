@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "scripts": {
+    "postinstall": "pnpm -C packages/db run generate",
     "dev": "turbo run dev --parallel",
     "dev:web": "turbo run dev --parallel --filter=web",
     "dev:worker": "turbo run dev --parallel --filter=worker",

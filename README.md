@@ -4,6 +4,8 @@ B2B веб‑приложение для автоматизации участи
 
 ## Быстрый старт (dev)
 
+**WSL + Windows:** команды **`pnpm …`** нужно выполнять в **терминале WSL (Ubuntu)**, в каталоге проекта внутри Linux (`~/tendery`), где установлены Node и pnpm. В **Windows PowerShell** команда `pnpm` часто «не найдена» — это нормально: в PowerShell нет вашего Linux-окружения. AI-gateway и web запускайте **оба в WSL** (два терминала WSL), иначе `127.0.0.1` будет указывать не туда.
+
 ### 1) Поднять инфраструктуру
 
 ```bash
@@ -19,6 +21,8 @@ docker compose up -d
 pnpm install --no-frozen-lockfile
 ```
 
+После установки в **`postinstall`** автоматически выполняется **`prisma generate`** (клиент попадает в `packages/db/src/generated/`, в git не коммитится). Если API падает с ошибкой про Prisma или вход в кабинет не работает — выполните вручную `pnpm -C packages/db run generate` и **перезапустите** dev-сервер web.
+
 ### 3) Подготовить БД (Prisma)
 
 ```bash
@@ -27,7 +31,7 @@ pnpm -C packages/db migrate:dev --name init
 
 ### 4) Запустить приложения
 
-В разных терминалах:
+Нужны **три** процесса (в разных терминалах или одной командой `pnpm dev`):
 
 ```bash
 pnpm -C apps/web dev
@@ -41,14 +45,17 @@ pnpm -C apps/worker dev
 pnpm -C apps/ai-gateway dev
 ```
 
+**AI-разбор и черновик** ходят в **ai-gateway**; без него в интерфейсе будет «Ошибка AI-шлюза». В `.env` задайте **`OPENAI_API_KEY`** (для шлюза), **`AI_GATEWAY_BASE_URL`** и **`AI_GATEWAY_API_KEY`** (одинаковый ключ у web и gateway).
+
 ## Переменные окружения
 
-- **Все токены, API-ключи и секреты — только в корневом `.env`** (в `.gitignore`, не коммитить). Перечень переменных: [docs/env.md](docs/env.md).
+- **Все токены, API-ключи и секреты — только в корневом `.env`** (в `.gitignore`, не коммитить). Перечень имён и назначение: [docs/env.md](docs/env.md).
+- **`.env.example`** — не файл с примерами значений, а указатель «смотри `docs/env.md`»; в git не кладём `KEY=…` с секретами.
 - **Важно по ТЗ**: продуктовый контур (`apps/web`, `apps/worker`) не должен напрямую вызывать OpenAI — только через `apps/ai-gateway`.
 
 ## Документация и ТЗ
 
-- **План реализации (10 шагов):** [docs/IMPLEMENTATION_STEPS.md](docs/IMPLEMENTATION_STEPS.md) — порядок разработки с минимумом правок в уже созданном коде.
+- **План реализации (10 шагов):** [IMPLEMENTATION_STEPS.md](IMPLEMENTATION_STEPS.md) — порядок разработки с минимумом правок в уже созданном коде.
 - **Деплой:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - **Миграции БД (RU):** [docs/MIGRATION_RU.md](docs/MIGRATION_RU.md)
 - **Runbook / эксплуатация:** [docs/RUNBOOK.md](docs/RUNBOOK.md)

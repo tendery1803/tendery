@@ -20,11 +20,14 @@ export function getTenderyQueue(): Queue {
   return queue;
 }
 
-export async function enqueueTenderFileRegistered(tenderFileId: string): Promise<void> {
+export async function enqueueTenderFileRegistered(
+  tenderFileId: string,
+  opts: { backgroundJobId: string }
+): Promise<void> {
   const q = getTenderyQueue();
   await q.add(
     JOB_TENDER_FILE_REGISTERED,
-    { tenderFileId },
+    { tenderFileId, backgroundJobId: opts.backgroundJobId },
     {
       removeOnComplete: 100,
       removeOnFail: 500
@@ -32,11 +35,14 @@ export async function enqueueTenderFileRegistered(tenderFileId: string): Promise
   );
 }
 
-export async function enqueueTenderExtractText(tenderFileId: string): Promise<void> {
+export async function enqueueTenderExtractText(
+  tenderFileId: string,
+  opts: { backgroundJobId: string }
+): Promise<void> {
   const q = getTenderyQueue();
   await q.add(
     JOB_TENDER_EXTRACT_TEXT,
-    { tenderFileId },
+    { tenderFileId, backgroundJobId: opts.backgroundJobId },
     {
       removeOnComplete: 100,
       removeOnFail: 500

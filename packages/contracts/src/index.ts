@@ -1,8 +1,16 @@
 export type UUID = string;
 
 export {
+  GoodsCompletenessSummarySchema,
+  TenderAiCharacteristicRowSchema,
   TenderAiFieldSchema,
+  TenderAiGoodItemSchema,
   TenderAiParseResultSchema,
-  type TenderAiParseResult
+  TenderAiServiceOfferingSchema,
+  TenderAnalysisStructuredBlockSchema,
+  type GoodsCompletenessSummary,
+  type TenderAiGoodItem,
+  type TenderAiParseResult,
+  type TenderAiServiceOffering,
+  type TenderAnalysisStructuredBlock
 } from "./tender-ai";
-

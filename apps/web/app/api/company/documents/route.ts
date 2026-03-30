@@ -10,6 +10,7 @@ const CreateDocumentBody = z.object({
   type: z.enum([
     "charter",
     "extract_egrul",
+    "company_card",
     "power_of_attorney",
     "license",
     "certificate",

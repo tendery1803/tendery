@@ -7,13 +7,15 @@
   "types": "./src/index.ts",
   "scripts": {
     "generate": "prisma generate",
-    "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
+    "migrate:dev": "node ./scripts/with-root-env.mjs migrate dev",
+    "migrate:deploy": "node ./scripts/with-root-env.mjs migrate deploy",
     "studio": "prisma studio",
     "typecheck": "tsc -p ./tsconfig.json --noEmit",
-    "bootstrap-admin": "prisma generate && node ./scripts/bootstrap-admin.mjs"
+    "bootstrap-admin": "prisma generate && node ./scripts/bootstrap-admin.mjs",
+    "set-plan-starter-exhausted-demo": "node ./scripts/set-company-plan.mjs starter --exhausted-demo"
   },
   "devDependencies": {
+    "@types/node": "^20",
     "argon2": "^0.44.0",
     "prisma": "^6.19.2",
     "typescript": "^5.9.2"

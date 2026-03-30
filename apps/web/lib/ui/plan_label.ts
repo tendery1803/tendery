@@ -1,7 +1,7 @@
 export function planDisplayName(code: string): string {
   const labels: Record<string, string> = {
     demo: "Демо",
-    starter: "Старт"
+    starter: "Стартер"
   };
   return labels[code] ?? code;
 }

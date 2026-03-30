@@ -48,6 +48,9 @@ export default function NewTenderClient() {
   return (
     <section className="mx-auto max-w-xl space-y-6">
       <div className="space-y-1">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 h-auto px-2 py-1">
+          <Link href="/dashboard/tenders">← Закупки</Link>
+        </Button>
         <h1 className="text-xl font-semibold">Создать закупку</h1>
         <p className="text-sm text-muted-foreground">
           Вручную, по ссылке на площадку или с последующей загрузкой файлов на карточке.

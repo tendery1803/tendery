@@ -20,6 +20,12 @@ importers:
       '@tendery/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@tendery/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      https-proxy-agent:
+        specifier: ^7.0.6
+        version: 7.0.6
       openai:
         specifier: ^4.104.0
         version: 4.104.0(zod@3.25.76)
@@ -54,6 +60,9 @@ importers:
       '@tendery/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@tendery/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@tendery/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -182,6 +191,9 @@ importers:
         specifier: ^6.16.0
         version: 6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.37
       argon2:
         specifier: ^0.44.0
         version: 0.44.0

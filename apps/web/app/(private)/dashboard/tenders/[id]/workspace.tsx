@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { buildTenderAnalysisTopFieldRows } from "@/lib/ai/tender-analysis-top-fields";
+import { apiErrorMessageFromJson } from "@/lib/ui/format_user_error";
 
 type AnalysisField = {
   id: string;
@@ -11,12 +13,47 @@ type AnalysisField = {
   confidence: number;
 };
 
+type StructuredCharacteristic = { name: string; value: string; sourceHint?: string };
+type StructuredGood = {
+  name: string;
+  positionId: string;
+  codes: string;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+  lineTotal: string;
+  sourceHint?: string;
+  characteristics: StructuredCharacteristic[];
+};
+type StructuredService = {
+  title: string;
+  volumeOrScope: string;
+  deadlinesOrStages: string;
+  resultRequirements: string;
+  otherTerms: string;
+  sourceHint?: string;
+};
+type AnalysisStructuredBlock = {
+  procurementKind?: string;
+  procurementMethod?: string;
+  goodsItems?: StructuredGood[];
+  servicesOfferings?: StructuredService[];
+  goodsCompleteness?: {
+    completenessStatus: string;
+    expectedCount: number | null;
+    extractedCount: number;
+    missingIdsCount: number;
+    checklistNote: string;
+  };
+};
+
 type Analysis = {
   id: string;
   status: string;
   summary: string | null;
   model: string | null;
   fields: AnalysisField[];
+  structuredBlock?: AnalysisStructuredBlock | null;
 } | null;
 
 type CheckItem = {
@@ -36,9 +73,166 @@ function checklistStatusLabel(status: string) {
       return "выполнено";
     case "missing":
       return "не выполнено";
+    case "review":
+      return "проверьте вручную";
     default:
       return status;
   }
+}
+
+function AnalysisGoodsServicesBlock({ block }: { block: AnalysisStructuredBlock | null }) {
+  if (!block || typeof block !== "object") return null;
+  const goods = Array.isArray(block.goodsItems) ? block.goodsItems : [];
+  const services = Array.isArray(block.servicesOfferings) ? block.servicesOfferings : [];
+  const showGoods = goods.length > 0;
+  const showServices = services.length > 0;
+
+  if (!showGoods && !showServices) return null;
+
+  const gc = block.goodsCompleteness;
+  let checklistNoteTrim = gc?.checklistNote?.trim() ?? "";
+  if (gc && gc.extractedCount !== goods.length && /\(извлечено\s+\d+/.test(checklistNoteTrim)) {
+    checklistNoteTrim = checklistNoteTrim.replace(
+      /\(извлечено\s+\d+\s*\)/,
+      `(извлечено ${goods.length})`
+    );
+  }
+  const completenessHint =
+    gc && checklistNoteTrim
+      ? checklistNoteTrim
+      : gc && gc.completenessStatus === "partial"
+        ? `Полнота спецификации: частично (извлечено ${gc.extractedCount}${gc.expectedCount != null ? `, ожид. ~${gc.expectedCount}` : ""}).`
+        : gc && gc.completenessStatus === "unknown"
+          ? "Полноту спецификации по документу нельзя подтвердить автоматически — сверьте вручную."
+          : null;
+
+  return (
+    <div className="mt-4 space-y-4 border-t border-border pt-4">
+      {completenessHint ? (
+        <p className="text-xs text-muted-foreground">{completenessHint}</p>
+      ) : null}
+      {showGoods ? (
+        <div className="space-y-3">
+          <div className="text-sm font-medium">Характеристики товаров</div>
+          {goods.map((g, idx) => (
+            <div
+              key={`${g.name}-${g.positionId}-${idx}`}
+              className="rounded-md border border-border bg-muted/20 p-3 text-xs"
+            >
+              <div
+                className="font-medium"
+                title={g.sourceHint?.trim() ? g.sourceHint.trim() : undefined}
+              >
+                {g.name?.trim() || `Позиция ${idx + 1}`}
+              </div>
+              <dl className="mt-1 grid gap-1 text-muted-foreground sm:grid-cols-2">
+                {g.positionId?.trim() ? (
+                  <>
+                    <dt>№ / идентификатор</dt>
+                    <dd className="text-foreground">{g.positionId}</dd>
+                  </>
+                ) : null}
+                {g.codes?.trim() ? (
+                  <>
+                    <dt>Коды (КТРУ / ОКПД2 и др.)</dt>
+                    <dd className="text-foreground">{g.codes}</dd>
+                  </>
+                ) : null}
+                {g.quantity?.trim() || g.unit?.trim() ? (
+                  <>
+                    <dt>Количество</dt>
+                    <dd className="text-foreground">
+                      {[g.quantity, g.unit].filter((x) => x?.trim()).join(" ")}
+                    </dd>
+                  </>
+                ) : null}
+                {g.unitPrice?.trim() ? (
+                  <>
+                    <dt>Цена за единицу</dt>
+                    <dd className="text-foreground">{g.unitPrice}</dd>
+                  </>
+                ) : null}
+                {g.lineTotal?.trim() ? (
+                  <>
+                    <dt>Стоимость позиции</dt>
+                    <dd className="text-foreground">{g.lineTotal}</dd>
+                  </>
+                ) : null}
+              </dl>
+              {g.characteristics?.length ? (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="py-1 pr-2 font-normal">Наименование характеристики</th>
+                        <th className="py-1 font-normal">Значение</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {g.characteristics.map((c, i) => (
+                        <tr
+                          key={`${c.name}-${i}`}
+                          className="border-b border-border/60 align-top"
+                          title={c.sourceHint?.trim() ? c.sourceHint.trim() : undefined}
+                        >
+                          <td className="py-1 pr-2">{c.name || "—"}</td>
+                          <td className="py-1">{c.value || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-2 text-muted-foreground">Характеристики для позиции не выделены.</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {showServices ? (
+        <div className="space-y-3">
+          <div className="text-sm font-medium">Услуги по тендеру</div>
+          <ul className="space-y-3 text-xs">
+            {services.map((s, idx) => (
+              <li key={`${s.title}-${idx}`} className="rounded-md border border-border bg-muted/20 p-3">
+                <div
+                  className="font-medium"
+                  title={s.sourceHint?.trim() ? s.sourceHint.trim() : undefined}
+                >
+                  {s.title?.trim() || `Услуга ${idx + 1}`}
+                </div>
+                {s.volumeOrScope?.trim() ? (
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Объём / состав: </span>
+                    {s.volumeOrScope}
+                  </p>
+                ) : null}
+                {s.deadlinesOrStages?.trim() ? (
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Сроки и этапы: </span>
+                    {s.deadlinesOrStages}
+                  </p>
+                ) : null}
+                {s.resultRequirements?.trim() ? (
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Требования к результату: </span>
+                    {s.resultRequirements}
+                  </p>
+                ) : null}
+                {s.otherTerms?.trim() ? (
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Прочие условия: </span>
+                    {s.otherTerms}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function TenderWorkspace({
@@ -52,6 +246,23 @@ export function TenderWorkspace({
   const [checklist, setChecklist] = React.useState<CheckItem[]>([]);
   const [draft, setDraft] = React.useState<Draft>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [analyzeDots, setAnalyzeDots] = React.useState(1);
+
+  React.useEffect(() => {
+    if (busy !== "analyze") {
+      setAnalyzeDots(1);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setAnalyzeDots((d) => (d >= 3 ? 1 : d + 1));
+    }, 450);
+    return () => window.clearInterval(id);
+  }, [busy]);
+
+  const topFieldRows = React.useMemo(
+    () => buildTenderAnalysisTopFieldRows(analysis?.fields ?? []),
+    [analysis?.fields]
+  );
 
   const refreshAnalysis = React.useCallback(async () => {
     const res = await fetch(`/api/tenders/${tenderId}/analysis`);
@@ -84,9 +295,19 @@ export function TenderWorkspace({
       const res = await fetch(`/api/tenders/${tenderId}/analyze`, { method: "POST" });
       const j = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(j?.error ?? `http_${res.status}`);
+        throw new Error(
+          apiErrorMessageFromJson(
+            j && typeof j === "object" && !Array.isArray(j)
+              ? (j as Record<string, unknown>)
+              : null,
+            `http_${res.status}`
+          )
+        );
       }
-      setAnalysis(j.analysis);
+      const body = j && typeof j === "object" && !Array.isArray(j) ? j : null;
+      setAnalysis(
+        body && "analysis" in body ? ((body as { analysis: Analysis }).analysis ?? null) : null
+      );
     } catch (e) {
       onMessage?.(e instanceof Error ? e.message : "analyze_failed");
     } finally {
@@ -100,8 +321,18 @@ export function TenderWorkspace({
     try {
       const res = await fetch(`/api/tenders/${tenderId}/draft`, { method: "POST" });
       const j = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(j?.error ?? `http_${res.status}`);
-      setDraft(j.draft);
+      if (!res.ok) {
+        throw new Error(
+          apiErrorMessageFromJson(
+            j && typeof j === "object" && !Array.isArray(j)
+              ? (j as Record<string, unknown>)
+              : null,
+            `http_${res.status}`
+          )
+        );
+      }
+      const body = j && typeof j === "object" && !Array.isArray(j) ? j : null;
+      setDraft(body && "draft" in body ? ((body as { draft: Draft }).draft ?? null) : null);
     } catch (e) {
       onMessage?.(e instanceof Error ? e.message : "draft_failed");
     } finally {
@@ -115,8 +346,22 @@ export function TenderWorkspace({
     try {
       const res = await fetch(`/api/tenders/${tenderId}/checklist`, { method: "POST" });
       const j = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(j?.error ?? `http_${res.status}`);
-      setChecklist(j.items ?? []);
+      if (!res.ok) {
+        throw new Error(
+          apiErrorMessageFromJson(
+            j && typeof j === "object" && !Array.isArray(j)
+              ? (j as Record<string, unknown>)
+              : null,
+            `http_${res.status}`
+          )
+        );
+      }
+      const body = j && typeof j === "object" && !Array.isArray(j) ? j : null;
+      setChecklist(
+        body && "items" in body && Array.isArray((body as { items: unknown }).items)
+          ? ((body as { items: CheckItem[] }).items ?? [])
+          : []
+      );
     } catch (e) {
       onMessage?.(e instanceof Error ? e.message : "checklist_failed");
     } finally {
@@ -133,9 +378,19 @@ export function TenderWorkspace({
             type="button"
             size="sm"
             disabled={busy !== null}
+            aria-busy={busy === "analyze"}
             onClick={() => void runAnalyze()}
           >
-            {busy === "analyze" ? "Разбор…" : "Запустить AI-разбор"}
+            {busy === "analyze" ? (
+              <>
+                Разбор
+                <span className="inline-block w-[3ch] text-left font-mono" aria-hidden>
+                  {".".repeat(analyzeDots)}
+                </span>
+              </>
+            ) : (
+              "Запустить AI-разбор"
+            )}
           </Button>
           <Button
             type="button"
@@ -167,26 +422,38 @@ export function TenderWorkspace({
           {analysis.summary ? (
             <p className="text-muted-foreground whitespace-pre-wrap">{analysis.summary}</p>
           ) : null}
+          {analysis.structuredBlock?.procurementMethod?.trim() ? (
+            <p className="text-muted-foreground">
+              <span className="font-medium text-foreground">Способ закупки: </span>
+              {analysis.structuredBlock.procurementMethod.trim()}
+            </p>
+          ) : null}
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-xs">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="px-2 py-2">Поле</th>
                   <th className="px-2 py-2">Значение</th>
-                  <th className="px-2 py-2">Уверенность</th>
+                  <th className="px-2 py-2">Точность, %</th>
                 </tr>
               </thead>
               <tbody>
-                {(analysis.fields ?? []).map((f) => (
-                  <tr key={f.id} className="border-b border-border align-top">
-                    <td className="px-2 py-2 whitespace-nowrap">{f.fieldLabel}</td>
-                    <td className="px-2 py-2">{f.valueText || "—"}</td>
-                    <td className="px-2 py-2">{f.confidence.toFixed(2)}</td>
+                {topFieldRows.map((row) => (
+                  <tr key={row.rowKey} className="border-b border-border align-top">
+                    <td className="px-2 py-2 whitespace-nowrap">{row.fieldLabel}</td>
+                    <td className="px-2 py-2">{row.valueText.trim() ? row.valueText : "—"}</td>
+                    <td className="px-2 py-2">
+                      {row.confidence != null
+                        ? String(Math.round(row.confidence * 100))
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <AnalysisGoodsServicesBlock block={analysis.structuredBlock ?? null} />
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">Разбор ещё не выполнен.</p>

@@ -74,8 +74,20 @@ export async function POST(
     data: { storageKey: key, fileStatus: "stored" }
   });
 
+  const bgJob = await prisma.backgroundJob.create({
+    data: {
+      type: "tender_file_registered",
+      status: "queued",
+      companyId: ctx.companyId,
+      userId: ctx.user.id,
+      entityType: "TenderFile",
+      entityId: fileRow.id,
+      payload: { tenderId }
+    }
+  });
+
   try {
-    await enqueueTenderFileRegistered(fileRow.id);
+    await enqueueTenderFileRegistered(fileRow.id, { backgroundJobId: bgJob.id });
   } catch (e) {
     await prisma.tenderFile.update({
       where: { id: fileRow.id },
@@ -83,6 +95,10 @@ export async function POST(
         fileStatus: "failed",
         registrationNote: `queue_failed: ${String(e)}`
       }
+    });
+    await prisma.backgroundJob.update({
+      where: { id: bgJob.id },
+      data: { status: "failed", error: `queue_failed: ${String(e)}` }
     });
     return NextResponse.json({ error: "queue_failed" }, { status: 502 });
   }

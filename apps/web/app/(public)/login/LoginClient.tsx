@@ -32,11 +32,22 @@ export default function LoginClient() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: email.trim(), password })
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? "login_failed");
+        const ct = res.headers.get("content-type") ?? "";
+        if (ct.includes("application/json")) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.error ?? "login_failed");
+        }
+        const text = await res.text().catch(() => "");
+        if (/\.prisma\/client|@prisma\/client|PrismaClient/i.test(text)) {
+          throw new Error("prisma_client_missing");
+        }
+        if (res.status >= 500) {
+          throw new Error("server_error");
+        }
+        throw new Error("login_failed");
       }
       router.push(nextPath);
     } catch (err) {
@@ -47,22 +58,24 @@ export default function LoginClient() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-sm px-6 py-16">
-      <h1 className="text-xl font-semibold">Вход</h1>
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <label className="block space-y-1">
-          <div className="text-sm text-muted-foreground">Эл. почта</div>
+    <main className="mx-auto w-full max-w-md px-6 py-16">
+      <div className="glass-panel p-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Вход</h1>
+        <p className="mt-2 text-base text-muted-foreground">Войдите в личный кабинет.</p>
+        <form onSubmit={onSubmit} className="mt-8 space-y-5">
+        <label className="block space-y-2">
+          <div className="text-sm font-medium text-foreground">Эл. почта</div>
           <input
-            className="h-10 w-full rounded-md border border-input bg-background px-3"
+            className="h-11 w-full rounded-md border border-input/80 bg-white/90 px-3 text-base shadow-sm backdrop-blur-sm dark:bg-zinc-950/80"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
         </label>
-        <label className="block space-y-1">
-          <div className="text-sm text-muted-foreground">Пароль</div>
+        <label className="block space-y-2">
+          <div className="text-sm font-medium text-foreground">Пароль</div>
           <input
-            className="h-10 w-full rounded-md border border-input bg-background px-3"
+            className="h-11 w-full rounded-md border border-input/80 bg-white/90 px-3 text-base shadow-sm backdrop-blur-sm dark:bg-zinc-950/80"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
@@ -72,15 +85,16 @@ export default function LoginClient() {
         {error ? (
           <div className="text-sm text-destructive">{formatUserError(error)}</div>
         ) : null}
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} size="lg">
           {loading ? "..." : "Войти"}
         </Button>
-        <p className="text-sm text-muted-foreground">
-          <a className="text-primary underline" href="/forgot-password">
+        <p className="text-base text-muted-foreground">
+          <a className="text-primary underline underline-offset-4" href="/forgot-password">
             Забыли пароль?
           </a>
         </p>
       </form>
+      </div>
     </main>
   );
 }

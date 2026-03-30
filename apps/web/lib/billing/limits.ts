@@ -1,4 +1,6 @@
-export type PlanCode = "demo" | "starter";
+import type { BillingPlanCode as CorePlanCode } from "@tendery/core";
+
+export type PlanCode = CorePlanCode;
 
 function intEnv(name: string, fallback: number): number {
   const v = process.env[name];
@@ -7,16 +9,33 @@ function intEnv(name: string, fallback: number): number {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-export function monthlyAiAnalyzeLimit(plan: PlanCode): number {
-  if (plan === "starter") {
-    return intEnv("BILLING_STARTER_AI_PER_MONTH", 500);
-  }
-  return intEnv("BILLING_DEMO_AI_PER_MONTH", 20);
+/**
+ * Месячный лимит AI-операций для пользователя с правами системного админа
+ * (`User.isSystemAdmin` или email в `SYSTEM_ADMIN_EMAILS`), независимо от тарифа компании.
+ */
+export function monthlyAiOperationsLimitForBillingAdmin(): number {
+  return intEnv("BILLING_ADMIN_AI_OPS_PER_MONTH", 100);
 }
 
-export function monthlyDraftLimit(plan: PlanCode): number {
+/**
+ * Единый месячный лимит AI-операций (ТЗ п. 18.1–18.2): разбор закупки и генерация черновика
+ * каждые списывают одну операцию из этой квоты.
+ *
+ * Демо: 3 операции/мес (ТЗ). Стартер: 30 операций/мес (ТЗ).
+ */
+export function monthlyAiOperationsLimit(plan: PlanCode): number {
   if (plan === "starter") {
-    return intEnv("BILLING_STARTER_DRAFT_PER_MONTH", 200);
+    return intEnv("BILLING_STARTER_AI_OPS_PER_MONTH", 30);
   }
-  return intEnv("BILLING_DEMO_DRAFT_PER_MONTH", 10);
+  return intEnv("BILLING_DEMO_AI_OPS_PER_MONTH", 3);
+}
+
+/** @deprecated Используйте monthlyAiOperationsLimit — отдельных лимитов разбор/черновик по ТЗ нет. */
+export function monthlyAiAnalyzeLimit(plan: PlanCode): number {
+  return monthlyAiOperationsLimit(plan);
+}
+
+/** @deprecated Используйте monthlyAiOperationsLimit. */
+export function monthlyDraftLimit(plan: PlanCode): number {
+  return monthlyAiOperationsLimit(plan);
 }

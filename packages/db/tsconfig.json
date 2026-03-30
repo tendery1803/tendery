@@ -4,6 +4,6 @@
     "composite": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "prisma/**/*.prisma"]
+  "include": ["src/**/*.ts", "src/generated/**/*.ts", "prisma/**/*.prisma"]
 }
 
