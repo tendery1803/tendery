@@ -106,6 +106,98 @@ function tryParseJson(str: string): { ok: true; value: unknown } | { ok: false; 
   }
 }
 
+function toSafeString(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (v == null) return "";
+  return String(v);
+}
+
+function toConfidence(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return Math.min(1, Math.max(0, v));
+  }
+  if (typeof v === "string") {
+    const n = Number(v.replace(",", "."));
+    if (Number.isFinite(n)) return Math.min(1, Math.max(0, n));
+  }
+  return 0;
+}
+
+/**
+ * Лёгкая нормализация «почти-валидного» JSON от модели.
+ * Не меняет структуру кардинально: только исправляет типовые типы (null/number/string) для известных полей.
+ */
+function normalizeTenderAiPayloadLoosely(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const obj = value as Record<string, unknown>;
+
+  const fields = Array.isArray(obj.fields)
+    ? obj.fields.map((f) => {
+        if (!f || typeof f !== "object") return f;
+        const row = f as Record<string, unknown>;
+        return {
+          key: toSafeString(row.key),
+          label: toSafeString(row.label),
+          value: toSafeString(row.value),
+          confidence: toConfidence(row.confidence)
+        };
+      })
+    : obj.fields;
+
+  const goodsItems = Array.isArray(obj.goodsItems)
+    ? obj.goodsItems.map((g) => {
+        if (!g || typeof g !== "object") return g;
+        const item = g as Record<string, unknown>;
+        const chars = Array.isArray(item.characteristics)
+          ? item.characteristics.map((c) => {
+              if (!c || typeof c !== "object") return c;
+              const ch = c as Record<string, unknown>;
+              return {
+                name: toSafeString(ch.name),
+                value: toSafeString(ch.value),
+                sourceHint: toSafeString(ch.sourceHint)
+              };
+            })
+          : [];
+        return {
+          name: toSafeString(item.name),
+          positionId: toSafeString(item.positionId),
+          codes: toSafeString(item.codes),
+          unit: toSafeString(item.unit),
+          quantity: toSafeString(item.quantity),
+          unitPrice: toSafeString(item.unitPrice),
+          lineTotal: toSafeString(item.lineTotal),
+          sourceHint: toSafeString(item.sourceHint),
+          characteristics: chars
+        };
+      })
+    : obj.goodsItems;
+
+  const servicesOfferings = Array.isArray(obj.servicesOfferings)
+    ? obj.servicesOfferings.map((s) => {
+        if (!s || typeof s !== "object") return s;
+        const row = s as Record<string, unknown>;
+        return {
+          title: toSafeString(row.title),
+          volumeOrScope: toSafeString(row.volumeOrScope),
+          deadlinesOrStages: toSafeString(row.deadlinesOrStages),
+          resultRequirements: toSafeString(row.resultRequirements),
+          otherTerms: toSafeString(row.otherTerms),
+          sourceHint: toSafeString(row.sourceHint)
+        };
+      })
+    : obj.servicesOfferings;
+
+  return {
+    ...obj,
+    summary: toSafeString(obj.summary),
+    procurementMethod: toSafeString(obj.procurementMethod),
+    fields,
+    goodsItems,
+    servicesOfferings
+  };
+}
+
 /** Экспорт для диагностики: какие кандидаты пробуются и что с ними. */
 export type ParseStageTrace = {
   stage: JsonParseStage;
@@ -201,7 +293,11 @@ export function parseTenderAiResult(outputText: string):
     }
 
     sawValidJson = true;
-    const parsed = TenderAiParseResultSchema.safeParse(r.value);
+    let parsed = TenderAiParseResultSchema.safeParse(r.value);
+    if (!parsed.success) {
+      const normalized = normalizeTenderAiPayloadLoosely(r.value);
+      parsed = TenderAiParseResultSchema.safeParse(normalized);
+    }
     if (!parsed.success) {
       lastSchemaFailStage = stage;
       continue;

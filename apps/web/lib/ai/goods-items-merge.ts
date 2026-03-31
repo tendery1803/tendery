@@ -19,6 +19,10 @@ function extractStructuralCodeToken(codesRaw: string): string {
  * Приоритет — номер позиции; иначе код КТРУ/ОКПД + количество + ед.изм. + усечённое имя; иначе составной отпечаток строки.
  */
 export function goodsItemMergeKey(g: TenderAiGoodItem): string {
+  const codeTok = extractStructuralCodeToken(g.codes ?? "");
+  const name = normKeyPart(g.name ?? "").slice(0, 120);
+  const q = normKeyPart(g.quantity ?? "");
+  const u = normKeyPart(g.unit ?? "");
   const pidRaw = normKeyPart(g.positionId ?? "")
     .replace(/^№\s*/i, "")
     .replace(/\.$/, "");
@@ -29,12 +33,13 @@ export function goodsItemMergeKey(g: TenderAiGoodItem): string {
     /^[\d\.]+$/.test(pidRaw) &&
     pidRaw.length <= 14
   ) {
+    /** Короткие позиционные номера (1,2,3...) часто переиспользуются между файлами/таблицами. */
+    if (pidRaw.length <= 4) {
+      if (codeTok) return `p:${pidRaw}|c:${codeTok}|q:${q}|u:${u}`;
+      return `p:${pidRaw}|n:${name.slice(0, 72)}|q:${q}|u:${u}`;
+    }
     return `p:${pidRaw}`;
   }
-  const codeTok = extractStructuralCodeToken(g.codes ?? "");
-  const name = normKeyPart(g.name ?? "").slice(0, 120);
-  const q = normKeyPart(g.quantity ?? "");
-  const u = normKeyPart(g.unit ?? "");
   const up = normKeyPart(g.unitPrice ?? "").slice(0, 36);
   const lt = normKeyPart(g.lineTotal ?? "").slice(0, 36);
   const regFromText =
@@ -151,10 +156,18 @@ function mergeCharacteristics(
   }));
 }
 
-function mergeOneItem(base: TenderAiGoodItem, incoming: TenderAiGoodItem): TenderAiGoodItem {
+function mergeOneItem(
+  base: TenderAiGoodItem,
+  incoming: TenderAiGoodItem,
+  options?: { preservePrimaryCoreFields?: boolean }
+): TenderAiGoodItem {
+  const preservePrimaryCoreFields = options?.preservePrimaryCoreFields === true;
   const bq = base.quantity ?? "";
   const iq = incoming.quantity ?? "";
-  const qMerged = preferMergeQuantity(bq, iq);
+  const qMerged =
+    preservePrimaryCoreFields && bq.trim()
+      ? bq
+      : preferMergeQuantity(bq, iq);
   // #region agent log
   if (bq.trim() && iq.trim() && bq.trim() !== iq.trim()) {
     const payload = {
@@ -173,8 +186,14 @@ function mergeOneItem(base: TenderAiGoodItem, incoming: TenderAiGoodItem): Tende
   }
   // #endregion
   return {
-    name: preferLongerText(base.name ?? "", incoming.name ?? ""),
-    positionId: preferLongerText(base.positionId ?? "", incoming.positionId ?? ""),
+    name:
+      preservePrimaryCoreFields && (base.name ?? "").trim()
+        ? base.name
+        : preferLongerText(base.name ?? "", incoming.name ?? ""),
+    positionId:
+      preservePrimaryCoreFields && (base.positionId ?? "").trim()
+        ? base.positionId
+        : preferLongerText(base.positionId ?? "", incoming.positionId ?? ""),
     codes: preferLongerText(base.codes ?? "", incoming.codes ?? ""),
     unit: preferLongerText(base.unit ?? "", incoming.unit ?? ""),
     quantity: qMerged,
@@ -207,7 +226,8 @@ export type GoodsMergeDiagnostics = {
  */
 export function mergeGoodsItemsListsWithDiagnostics(
   primary: TenderAiGoodItem[],
-  secondary: TenderAiGoodItem[]
+  secondary: TenderAiGoodItem[],
+  options?: { preservePrimaryCoreFields?: boolean }
 ): { merged: TenderAiGoodItem[]; diagnostics: GoodsMergeDiagnostics } {
   const mergeKeyCollisionWarnings: string[] = [];
   const mergeOperations: GoodsMergeOperationRecord[] = [];
@@ -240,7 +260,7 @@ export function mergeGoodsItemsListsWithDiagnostics(
         incomingPositionId: g.positionId ?? ""
       });
     }
-    byKey.set(k, mergeOneItem(ex, g));
+    byKey.set(k, mergeOneItem(ex, g, options));
   };
 
   for (const g of primary) push(g);

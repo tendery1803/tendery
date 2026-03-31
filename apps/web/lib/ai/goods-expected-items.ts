@@ -40,6 +40,36 @@ function normPosId(s: string): string {
   return s.replace(/^№\s*/i, "").replace(/\.$/, "").trim();
 }
 
+function isLikelyServiceOrCharacteristicLine(line: string): boolean {
+  const t = line.toLowerCase();
+  if (!t.trim()) return true;
+  if (
+    /характеристик|значение\s+характеристик|наименование\s+характеристик|инструкц|обосновани|дополнительн(?:ой|ую|ая)\s+информаци|участник\s+закупк|не\s+может\s+изменя|описани[ея]\s+объекта\s+закупк/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (/^(наименование|количество|ед\.?\s*изм|цена|стоимость)\b/.test(t.trim())) return true;
+  return false;
+}
+
+function lineHasGoodsRowSignals(line: string): boolean {
+  const t = line.toLowerCase();
+  if (/\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5}/.test(t)) return true; // КТРУ
+  if (/\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t)) return true; // ОКПД
+  if (/\b\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)\b/.test(t)) return true;
+  if (/\|/.test(line) || /\t/.test(line)) return true;
+  return false;
+}
+
+function isTrustedTopLevelGoodsPositionLine(line: string, posNum: number): boolean {
+  if (isLikelyServiceOrCharacteristicLine(line)) return false;
+  if (lineHasGoodsRowSignals(line)) return true;
+  /** Без явных сигналов доверяем только началу коротких списков (1..12), чтобы не ловить «20/24/25» из шумных блоков. */
+  return posNum <= 12;
+}
+
 /**
  * Номер в начале строки: «1. », «2) », OCR «1 .»
  * Дополнительно: колонка п/п без точки, но с отступом как в таблице («1  Наименование»).
@@ -99,9 +129,9 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
   const numsRelaxed: number[] = [];
   for (const line of lines) {
     const ns = lineLeadingPositionNumberStrict(line);
-    if (ns != null) numsStrict.push(ns);
+    if (ns != null && isTrustedTopLevelGoodsPositionLine(line, ns)) numsStrict.push(ns);
     const nr = lineLeadingPositionNumberRelaxed(line);
-    if (nr != null) numsRelaxed.push(nr);
+    if (nr != null && isTrustedTopLevelGoodsPositionLine(line, nr)) numsRelaxed.push(nr);
   }
   const uniqSorted = [...new Set(numsStrict)].sort((a, b) => a - b);
   const declaredHits = declaredPhraseScan(corpus);
