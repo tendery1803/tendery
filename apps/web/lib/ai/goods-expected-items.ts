@@ -107,7 +107,8 @@ function hasTopLevelGoodsSignalsAround(lines: string[], idx: number): boolean {
   if (!hasId || !hasQty) return false;
   const hasPrice = hasMoneySignal(block);
   const hasTableHeaderHints = /[\t|]/.test(block) || /\b(кол-?во|количество|ед\.?\s*изм|цена|стоимост)\b/i.test(block);
-  return hasPrice || hasTableHeaderHints || (hasIdSignal(line) && hasExplicitQtyUnit(line));
+  /** Для trusted-детекции считаем только структурный item-header block (цена/стоимость или явная табличная структура). */
+  return hasPrice || hasTableHeaderHints;
 }
 
 function isTrustedTopLevelGoodsPositionLine(lines: string[], idx: number, posNum: number): boolean {
@@ -242,12 +243,11 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
 
   if (tableNums.length >= 2) {
     const maxFromTable = Math.max(...tableNums);
-    let count = maxFromTable;
+    let count = tableNums.length;
     let confidence = 0.82;
     if (declared != null) {
-      count = Math.max(count, declared);
-      if (declared === maxFromTable) confidence = 0.92;
-      else if (Math.abs(declared - maxFromTable) <= 2) confidence = 0.78;
+      if (declared === tableNums.length) confidence = 0.92;
+      else if (Math.abs(declared - tableNums.length) <= 2) confidence = 0.78;
       else confidence = 0.65;
     }
     const usedRelaxedList = uniqSorted.length < 2 && numsRelaxed.length >= 2;
