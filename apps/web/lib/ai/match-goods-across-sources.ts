@@ -211,6 +211,46 @@ function extractQuantityFromLine(line: string): string | undefined {
   return extractQuantityFromTabularGoodsLine(line);
 }
 
+function looksLikeMoneyOrPercent(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  if (/%/.test(t)) return true;
+  if (/(?:руб|₽)/i.test(t)) return true;
+  return false;
+}
+
+function normalizeQuantityCandidate(raw: string): string {
+  return raw.replace(/\s/g, "").replace(",", ".").trim();
+}
+
+function isPlausibleTopLevelQuantity(raw: string): boolean {
+  if (!raw) return false;
+  if (looksLikeMoneyOrPercent(raw)) return false;
+  const q = normalizeQuantityCandidate(raw);
+  if (!/^\d{1,6}(?:\.\d{1,3})?$/.test(q)) return false;
+  const n = Number(q);
+  if (!Number.isFinite(n)) return false;
+  if (n <= 0 || n > 999_999) return false;
+  return true;
+}
+
+function chooseTrustedQuantity(args: {
+  noticeQty: string;
+  tzQty: string;
+  aiQty: string;
+}): { value: string; source: GoodsSourceAuditRow["quantitySource"] } {
+  if (isPlausibleTopLevelQuantity(args.noticeQty)) {
+    return { value: normalizeQuantityCandidate(args.noticeQty), source: "notice" };
+  }
+  if (isPlausibleTopLevelQuantity(args.tzQty)) {
+    return { value: normalizeQuantityCandidate(args.tzQty), source: "tech_spec" };
+  }
+  if (isPlausibleTopLevelQuantity(args.aiQty)) {
+    return { value: normalizeQuantityCandidate(args.aiQty), source: "unknown" };
+  }
+  return { value: "", source: "unknown" };
+}
+
 function extractPricesFromNoticeLine(line: string): { unitPrice: string; lineTotal: string } {
   const rubs = [...line.matchAll(/(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:руб|₽)/gi)];
   if (rubs.length === 0) return { unitPrice: "", lineTotal: "" };
@@ -619,15 +659,13 @@ function mergeFallbackLenient(
       : "";
     const aiQty = (g.quantity ?? "").trim();
     const tzQty = techHit?.quantity?.trim() ?? "";
-    /** Печатная форма / извещение — источник количества и цен; ТЗ — характеристики; tech anchor часто цепляет неверную строку при одном КТРУ. */
-    const qty = noticeQtyFromLine || aiQty || tzQty;
+    /** Количество берём из локального top-level блока (notice/tz), AI — только fallback. */
+    const qtyChoice = chooseTrustedQuantity({ noticeQty: noticeQtyFromLine, tzQty, aiQty });
+    const qty = qtyChoice.value;
 
     const { unitPrice, lineTotal, priceSource } = attachNoticePrices(noticeHit, g);
 
-    let quantitySource: GoodsSourceAuditRow["quantitySource"] = "unknown";
-    if (noticeQtyFromLine) quantitySource = "notice";
-    else if (aiQty) quantitySource = "unknown";
-    else if (tzQty) quantitySource = "tech_spec";
+    const quantitySource: GoodsSourceAuditRow["quantitySource"] = qtyChoice.source;
 
     audit.push({
       matchedKey: toks[0] ?? nk.slice(0, 40),
@@ -778,12 +816,13 @@ export function reconcileGoodsItemsWithDocumentSources(
           "")
       : "";
     const qtyFromTz = (tz.quantity ?? "").trim();
-    const qtyFinal =
-      noticeQtyFromLine || qtyFromTz || (bestAi?.quantity ?? "").trim() || "";
-    let quantitySource: GoodsSourceAuditRow["quantitySource"] = "unknown";
-    if (noticeQtyFromLine) quantitySource = "notice";
-    else if (qtyFromTz) quantitySource = "tech_spec";
-    else if ((bestAi?.quantity ?? "").trim()) quantitySource = "unknown";
+    const qtyChoice = chooseTrustedQuantity({
+      noticeQty: noticeQtyFromLine,
+      tzQty: qtyFromTz,
+      aiQty: (bestAi?.quantity ?? "").trim()
+    });
+    const qtyFinal = qtyChoice.value;
+    const quantitySource: GoodsSourceAuditRow["quantitySource"] = qtyChoice.source;
 
     const positionId =
       (/^20\d{7,11}$/.test(tzPid) ? (tz.positionId ?? "").trim() : "") ||

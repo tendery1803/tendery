@@ -26,4 +26,17 @@ assert.equal(got.detectionSource, "table_max_position");
 assert.equal(got.expectedItemsCount, 8);
 assert.deepEqual(got.expectedPositionIds, ["1", "2", "3", "4", "5", "6", "7", "8"]);
 
+const noisyBareOrdinals = `
+1. Позиция
+2. Позиция
+3. Позиция
+4. Позиция
+20. Дополнительная информация
+24. Обоснование включения
+25. Инструкция по заполнению
+`;
+const gotNoisy = inferExpectedGoodsCoverage(noisyBareOrdinals);
+assert.equal(gotNoisy.detectionSource, "none");
+assert.deepEqual(gotNoisy.expectedPositionIds, []);
+
 console.log("goods-expected-items.verify: OK");

@@ -58,16 +58,35 @@ function lineHasGoodsRowSignals(line: string): boolean {
   const t = line.toLowerCase();
   if (/\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5}/.test(t)) return true; // КТРУ
   if (/\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t)) return true; // ОКПД
+  if (/\b20\d{7,11}\b/.test(t)) return true; // реестровый id позиции
+  if (/\b(?:кол-?во|количество|ед\.?\s*изм|единиц[аы]\s+измерения|цена\s+за\s+ед|стоимост[ьи])\b/.test(t))
+    return true;
   if (/\b\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)\b/.test(t)) return true;
+  if (/(?:руб|₽)/i.test(line)) return true;
   if (/\|/.test(line) || /\t/.test(line)) return true;
+  if (/\b(картридж|тонер|фотобарабан|барабан|расходн(?:ый|ого)\s+материал|принтер|мфу|бумаг[аи])\b/.test(t))
+    return true;
   return false;
 }
 
-function isTrustedTopLevelGoodsPositionLine(line: string, posNum: number): boolean {
+function hasTopLevelGoodsSignalsAround(lines: string[], idx: number): boolean {
+  const from = Math.max(0, idx - 1);
+  const to = Math.min(lines.length - 1, idx + 2);
+  for (let i = from; i <= to; i++) {
+    const line = lines[i] ?? "";
+    if (!line.trim()) continue;
+    if (isLikelyServiceOrCharacteristicLine(line)) continue;
+    if (lineHasGoodsRowSignals(line)) return true;
+  }
+  return false;
+}
+
+function isTrustedTopLevelGoodsPositionLine(lines: string[], idx: number, posNum: number): boolean {
+  const line = lines[idx] ?? "";
   if (isLikelyServiceOrCharacteristicLine(line)) return false;
-  if (lineHasGoodsRowSignals(line)) return true;
-  /** Без явных сигналов доверяем только началу коротких списков (1..12), чтобы не ловить «20/24/25» из шумных блоков. */
-  return posNum <= 12;
+  if (posNum < 1 || posNum > 5000) return false;
+  /** Не доверяем "голым" нумерованным строкам без локальных сигналов товарного блока. */
+  return hasTopLevelGoodsSignalsAround(lines, idx);
 }
 
 /**
@@ -127,11 +146,12 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
   const lines = corpus.split(/\n/);
   const numsStrict: number[] = [];
   const numsRelaxed: number[] = [];
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
     const ns = lineLeadingPositionNumberStrict(line);
-    if (ns != null && isTrustedTopLevelGoodsPositionLine(line, ns)) numsStrict.push(ns);
+    if (ns != null && isTrustedTopLevelGoodsPositionLine(lines, i, ns)) numsStrict.push(ns);
     const nr = lineLeadingPositionNumberRelaxed(line);
-    if (nr != null && isTrustedTopLevelGoodsPositionLine(line, nr)) numsRelaxed.push(nr);
+    if (nr != null && isTrustedTopLevelGoodsPositionLine(lines, i, nr)) numsRelaxed.push(nr);
   }
   const uniqSorted = [...new Set(numsStrict)].sort((a, b) => a - b);
   const declaredHits = declaredPhraseScan(corpus);
