@@ -35,4 +35,36 @@ const arrayRoot = '[{"summary":"in array","fields":[]}]';
 const arr = parseTenderAiResult(arrayRoot);
 assert.equal(arr.ok, true);
 
+/** Допуск «почти-валидных» типов: confidence строкой, null/string-number в полях и товарах. */
+const relaxed = parseTenderAiResult(
+  JSON.stringify({
+    summary: null,
+    fields: [{ key: "nmck", label: "НМЦК", value: 12345, confidence: "0,84" }],
+    procurementKind: "goods",
+    procurementMethod: null,
+    goodsItems: [
+      {
+        name: "Товар A",
+        positionId: 1,
+        codes: 123,
+        unit: null,
+        quantity: 10,
+        unitPrice: null,
+        lineTotal: 999,
+        sourceHint: null,
+        characteristics: [{ name: "Цвет", value: null, sourceHint: null }]
+      }
+    ]
+  })
+);
+assert.equal(relaxed.ok, true);
+if (relaxed.ok) {
+  assert.equal(relaxed.data.summary, "");
+  assert.equal(relaxed.data.procurementMethod, "");
+  assert.equal(relaxed.data.fields[0]?.confidence, 0.84);
+  assert.equal(relaxed.data.fields[0]?.value, "12345");
+  assert.equal(relaxed.data.goodsItems[0]?.positionId, "1");
+  assert.equal(relaxed.data.goodsItems[0]?.characteristics[0]?.value, "");
+}
+
 console.log("parse-model-json.verify: OK");

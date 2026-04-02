@@ -48,6 +48,7 @@ import {
   type ReconcileGoodsDocumentSourcesResult
 } from "@/lib/ai/match-goods-across-sources";
 import type { GoodsMergeOperationRecord } from "@/lib/ai/goods-items-merge";
+import { applyTrustedSupplementGuards } from "@/lib/ai/goods-supplement-guard";
 import type {
   GoodsCompletenessSummary,
   TenderAiGoodItem,
@@ -421,6 +422,22 @@ export async function runTenderAiAnalyze(
       mergedAi.procurementKind === "goods" || mergedAi.procurementKind === "mixed";
 
     const expectedCoverage = isGoodsLike ? inferExpectedGoodsCoverage(corpus) : null;
+    const trustedExpectedPositionIds =
+      isGoodsLike &&
+      expectedCoverage != null &&
+      expectedCoverage.detectionSource === "table_max_position" &&
+      expectedCoverage.expectedPositionIds.length > 0 &&
+      expectedCoverage.confidence >= 0.75
+        ? [...expectedCoverage.expectedPositionIds]
+        : [];
+    const trustedExpectedGoodsCount =
+      isGoodsLike &&
+      expectedCoverage != null &&
+      expectedCoverage.detectionSource === "table_max_position" &&
+      expectedCoverage.expectedItemsCount != null &&
+      expectedCoverage.confidence >= 0.75
+        ? expectedCoverage.expectedItemsCount
+        : null;
     const chunkMetas = isGoodsLike ? buildGoodsSpecificationChunksWithMeta(corpus) : [];
     const chunksSweepDiagnostics = isGoodsLike
       ? diagnoseGoodsSpecificationChunksSweep(corpus, chunkMetas)
@@ -475,7 +492,8 @@ export async function runTenderAiAnalyze(
     const applyGoodsMerge = (incoming: TenderAiGoodItem[], stage: string) => {
       const { merged, diagnostics } = mergeGoodsItemsListsWithDiagnostics(
         mergedAi.goodsItems,
-        incoming
+        incoming,
+        { preservePrimaryCoreFields: true }
       );
       mergeWarnAcc.push(...diagnostics.mergeKeyCollisionWarnings);
       for (const op of diagnostics.mergeOperations) {
@@ -537,6 +555,12 @@ export async function runTenderAiAnalyze(
         if (options?.filterIncomingGoods) {
           incomingGoods = options.filterIncomingGoods(incomingGoods);
         }
+        incomingGoods = applyTrustedSupplementGuards({
+          incoming: incomingGoods,
+          currentCount: mergedAi.goodsItems.length,
+          trustedExpectedGoodsCount,
+          trustedExpectedPositionIds
+        });
         const extractedCount = incomingGoods.length;
         const extractedPositionIdsFromModel = sortedPositionIds(incomingGoods);
         applyGoodsMerge(incomingGoods, mergeStage);
@@ -626,7 +650,8 @@ export async function runTenderAiAnalyze(
           );
         }
 
-        const missing = goodsCoverageAudit?.missingPositionIds ?? [];
+        const missing =
+          trustedExpectedPositionIds.length > 0 ? goodsCoverageAudit?.missingPositionIds ?? [] : [];
 
         if (missing.length > 0) {
           const rr = await runExtraGoodsPass(
@@ -652,7 +677,7 @@ export async function runTenderAiAnalyze(
           }
         }
 
-        const expCount = expectedCoverage?.expectedItemsCount ?? null;
+        const expCount = trustedExpectedGoodsCount;
         if (expCount != null && mergedAi.goodsItems.length < expCount) {
           const rr = await runExtraGoodsPass(
             "goods_forced_count",
@@ -722,7 +747,8 @@ export async function runTenderAiAnalyze(
           mergedAi.goodsItems
         );
         goodsCoverageAudit.mergeOperationsByStage = mergeOpsAcc;
-        const missing = goodsCoverageAudit.missingPositionIds;
+        const missing =
+          trustedExpectedPositionIds.length > 0 ? goodsCoverageAudit.missingPositionIds : [];
         const needMissing = missing.length > 0;
         const needCount =
           expectedCoverage != null &&

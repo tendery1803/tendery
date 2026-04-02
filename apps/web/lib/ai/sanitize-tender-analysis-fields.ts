@@ -190,6 +190,8 @@ const JUNK_CHAR_VALUE_SNIPPETS = [
   "участник закупки указывает",
   "значение характеристики не может изменяться",
   "обоснование включения",
+  "дополнительной информации",
+  "инструкция по заполнению",
   "в соответствии со ст.",
   "постановлением правительства"
 ] as const;
@@ -253,11 +255,10 @@ function canonicalCharacteristicGroupKey(name: string): string {
   const k = normChKey(normalizeCharacteristicNameOcr(name));
   if (!k) return k;
   if (
-    /^цвет\b/.test(k) ||
-    /цвет\s+(красителя|картриджа|тонера|принтера)/.test(k) ||
-    /\bцвет\s+красителя\b/.test(k)
+    /^(?:цвет|цвет\s+(красителя|картриджа|тонера|чернил))$/.test(k) ||
+    /\bцвет\s+(красителя|картриджа|тонера|чернил)\b/.test(k)
   ) {
-    return "цвет";
+    return "цвет_товара";
   }
   if (/^модел/.test(k)) return "модель";
   if (/област(ь)?\s*применен/.test(k)) return "область применения";
@@ -315,8 +316,12 @@ function squeezeHeavyCharacteristicList<T extends { name: string; value: string 
   const longCount = rows.filter((c) => (c.value ?? "").trim().length > 80).length;
   if (longCount < 3) return rows;
   const preferred = rows.filter((c) => isPreferredRetailCharacteristicName(c.name));
-  if (preferred.length > 0) return preferred;
-  return rows.slice(0, 8);
+  if (preferred.length > 0) {
+    const preferredSet = new Set(preferred);
+    const tail = rows.filter((c) => !preferredSet.has(c)).slice(0, 6);
+    return [...preferred, ...tail];
+  }
+  return rows.slice(0, 12);
 }
 
 function cleanGoodsItemsCharacteristics(items: TenderAiGoodItem[]): TenderAiGoodItem[] {
@@ -343,7 +348,7 @@ function cleanGoodsItemsCharacteristics(items: TenderAiGoodItem[]): TenderAiGood
         byName.set(k, ch);
         continue;
       }
-      const shortCanon = k === "цвет" || k === "модель" || k === "область применения";
+      const shortCanon = k === "цвет_товара" || k === "модель" || k === "область применения";
       const chipKey = /чип|наличие\s*чип/.test(k);
       byName.set(k, {
         ...prev,

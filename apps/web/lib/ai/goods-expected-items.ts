@@ -40,6 +40,101 @@ function normPosId(s: string): string {
   return s.replace(/^№\s*/i, "").replace(/\.$/, "").trim();
 }
 
+function isLikelyServiceOrCharacteristicLine(line: string): boolean {
+  const t = line.toLowerCase();
+  if (!t.trim()) return true;
+  if (
+    /характеристик|значение\s+характеристик|наименование\s+характеристик|инструкц|обосновани|дополнительн(?:ой|ую|ая)\s+информаци|участник\s+закупк|не\s+может\s+изменя|описани[ея]\s+объекта\s+закупк/.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (/^(наименование|количество|ед\.?\s*изм|цена|стоимость)\b/.test(t.trim())) return true;
+  return false;
+}
+
+function lineHasGoodsRowSignals(line: string): boolean {
+  const t = line.toLowerCase();
+  if (/\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5,8}/.test(t)) return true; // КТРУ
+  if (/\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t)) return true; // ОКПД
+  if (/\b20\d{7,11}\b/.test(t)) return true; // реестровый id позиции
+  if (/\b(?:кол-?во|количество|ед\.?\s*изм|единиц[аы]\s+измерения|цена\s+за\s+ед|стоимост[ьи])\b/.test(t))
+    return true;
+  if (/(?:^|\s)\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)(?:\s|$|[|;,.])/i.test(t))
+    return true;
+  if (/(?:руб|₽)/i.test(line)) return true;
+  if (/\|/.test(line) || /\t/.test(line)) return true;
+  if (/\b(картридж|тонер|фотобарабан|барабан|расходн(?:ый|ого)\s+материал|принтер|мфу|бумаг[аи])\b/.test(t))
+    return true;
+  return false;
+}
+
+function hasExplicitQtyUnit(line: string): boolean {
+  return /(?:^|\s)\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)(?:\s|$|[|;,.])/i.test(
+    line
+  );
+}
+
+function hasIdSignal(line: string): boolean {
+  const t = line.toLowerCase();
+  return (
+    /\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5,8}/.test(t) || // КТРУ
+    /\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t) || // ОКПД
+    /\b20\d{7,11}\b/.test(t) // реестровый id
+  );
+}
+
+function hasMoneySignal(line: string): boolean {
+  return /(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:руб|₽)/i.test(line);
+}
+
+function looksLikeItemHeaderBlockLine(line: string): boolean {
+  const t = line.toLowerCase();
+  if (isLikelyServiceOrCharacteristicLine(line)) return false;
+  if (/\|/.test(line) || /\t/.test(line)) return true;
+  return /\b(товар|позиц|картридж|тонер|фотобарабан|барабан|расходн(?:ый|ого)\s+материал)\b/.test(t);
+}
+
+function hasTopLevelGoodsSignalsAround(lines: string[], idx: number): boolean {
+  const line = lines[idx] ?? "";
+  const next = lines[idx + 1] ?? "";
+  const block = `${line}\n${next}`;
+  const hasHeader = looksLikeItemHeaderBlockLine(line) || lineHasGoodsRowSignals(line);
+  if (!hasHeader) return false;
+  const hasId = hasIdSignal(block);
+  const hasQty = hasExplicitQtyUnit(block);
+  if (!hasId || !hasQty) return false;
+  const hasPrice = hasMoneySignal(block);
+  const hasTableHeaderHints = /[\t|]/.test(block) || /\b(кол-?во|количество|ед\.?\s*изм|цена|стоимост)\b/i.test(block);
+  /** Для trusted-детекции считаем только структурный item-header block (цена/стоимость или явная табличная структура). */
+  return hasPrice || hasTableHeaderHints;
+}
+
+function isTrustedTopLevelGoodsPositionLine(lines: string[], idx: number, posNum: number): boolean {
+  const line = lines[idx] ?? "";
+  if (isLikelyServiceOrCharacteristicLine(line)) return false;
+  if (posNum < 1 || posNum > 5000) return false;
+  /** Не доверяем "голым" нумерованным строкам без локальных сигналов товарного блока. */
+  const block = `${line}\n${lines[idx + 1] ?? ""}`;
+  if (!hasIdSignal(block)) return false;
+  if (!hasExplicitQtyUnit(block)) return false;
+  return hasTopLevelGoodsSignalsAround(lines, idx);
+}
+
+function buildContinuousAnchoredOrdinals(sorted: number[]): number[] {
+  if (!sorted.length) return [];
+  if (sorted[0] !== 1) return [];
+  const out: number[] = [1];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = out[out.length - 1]!;
+    const cur = sorted[i]!;
+    if (cur === prev + 1) out.push(cur);
+    else break;
+  }
+  return out.length >= 2 ? out : [];
+}
+
 /**
  * Номер в начале строки: «1. », «2) », OCR «1 .»
  * Дополнительно: колонка п/п без точки, но с отступом как в таблице («1  Наименование»).
@@ -97,11 +192,12 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
   const lines = corpus.split(/\n/);
   const numsStrict: number[] = [];
   const numsRelaxed: number[] = [];
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
     const ns = lineLeadingPositionNumberStrict(line);
-    if (ns != null) numsStrict.push(ns);
+    if (ns != null && isTrustedTopLevelGoodsPositionLine(lines, i, ns)) numsStrict.push(ns);
     const nr = lineLeadingPositionNumberRelaxed(line);
-    if (nr != null) numsRelaxed.push(nr);
+    if (nr != null && isTrustedTopLevelGoodsPositionLine(lines, i, nr)) numsRelaxed.push(nr);
   }
   const uniqSorted = [...new Set(numsStrict)].sort((a, b) => a - b);
   const declaredHits = declaredPhraseScan(corpus);
@@ -137,21 +233,21 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
   };
 
   /** Если в таблице только «мягкая» нумерация, но ≥2 строк — используем её для expected list (минимальный патч против «всего 5»). */
-  const tableNums =
+  const tableNumsRaw =
     uniqSorted.length >= 2
       ? uniqSorted
       : numsRelaxed.length >= 2
         ? [...new Set(numsRelaxed)].sort((a, b) => a - b)
         : uniqSorted;
+  const tableNums = buildContinuousAnchoredOrdinals(tableNumsRaw);
 
   if (tableNums.length >= 2) {
     const maxFromTable = Math.max(...tableNums);
-    let count = maxFromTable;
+    let count = tableNums.length;
     let confidence = 0.82;
     if (declared != null) {
-      count = Math.max(count, declared);
-      if (declared === maxFromTable) confidence = 0.92;
-      else if (Math.abs(declared - maxFromTable) <= 2) confidence = 0.78;
+      if (declared === tableNums.length) confidence = 0.92;
+      else if (Math.abs(declared - tableNums.length) <= 2) confidence = 0.78;
       else confidence = 0.65;
     }
     const usedRelaxedList = uniqSorted.length < 2 && numsRelaxed.length >= 2;
