@@ -223,6 +223,20 @@ function normalizeQuantityCandidate(raw: string): string {
   return raw.replace(/\s/g, "").replace(",", ".").trim();
 }
 
+function extractExplicitHeaderQuantity(block: string): string {
+  if (!block.trim()) return "";
+  const lines = block.split("\n");
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (!/\b(кол-?во|количество)\b/i.test(t)) continue;
+    const m = t.match(/(?:кол-?во|количество)[^0-9]{0,20}(\d{1,6}(?:[.,]\d{1,3})?)\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)\b/i);
+    if (!m?.[1]) continue;
+    return normalizeQuantityCandidate(m[1]);
+  }
+  return "";
+}
+
 function isPlausibleTopLevelQuantity(raw: string): boolean {
   if (!raw) return false;
   if (looksLikeMoneyOrPercent(raw)) return false;
@@ -237,16 +251,12 @@ function isPlausibleTopLevelQuantity(raw: string): boolean {
 function chooseTrustedQuantity(args: {
   noticeQty: string;
   tzQty: string;
-  aiQty: string;
 }): { value: string; source: GoodsSourceAuditRow["quantitySource"] } {
   if (isPlausibleTopLevelQuantity(args.noticeQty)) {
     return { value: normalizeQuantityCandidate(args.noticeQty), source: "notice" };
   }
   if (isPlausibleTopLevelQuantity(args.tzQty)) {
     return { value: normalizeQuantityCandidate(args.tzQty), source: "tech_spec" };
-  }
-  if (isPlausibleTopLevelQuantity(args.aiQty)) {
-    return { value: normalizeQuantityCandidate(args.aiQty), source: "unknown" };
   }
   return { value: "", source: "unknown" };
 }
@@ -652,15 +662,10 @@ function mergeFallbackLenient(
 
     if (!acceptedTech && acceptedNotice) positionsAcceptedFromNoticeOnly++;
 
-    const noticeQtyFromLine = noticeHit
-      ? (noticeHit.quantity?.trim() ||
-          extractQuantityFromTabularGoodsLine(noticeHit.rawLine) ||
-          "")
-      : "";
-    const aiQty = (g.quantity ?? "").trim();
-    const tzQty = techHit?.quantity?.trim() ?? "";
-    /** Количество берём из локального top-level блока (notice/tz), AI — только fallback. */
-    const qtyChoice = chooseTrustedQuantity({ noticeQty: noticeQtyFromLine, tzQty, aiQty });
+    const noticeQtyFromLine = noticeHit ? extractExplicitHeaderQuantity(noticeHit.rawLine) : "";
+    const tzQty = extractExplicitHeaderQuantity(techHit?.rawLine ?? "") || (techHit?.quantity?.trim() ?? "");
+    /** Количество берём только из явного поля quantity в локальном item-header блоке. */
+    const qtyChoice = chooseTrustedQuantity({ noticeQty: noticeQtyFromLine, tzQty });
     const qty = qtyChoice.value;
 
     const { unitPrice, lineTotal, priceSource } = attachNoticePrices(noticeHit, g);
@@ -691,7 +696,6 @@ function mergeFallbackLenient(
         data: {
           pid: pidNorm,
           noticeQty: noticeQtyFromLine,
-          aiQty,
           tzQty,
           qtyOut: qty,
           noticeLinePreview: noticeHit?.rawLine?.slice(0, 200) ?? "",
@@ -810,16 +814,11 @@ export function reconcileGoodsItemsWithDocumentSources(
     if (noticeHit && (unitPrice || lineTotal)) matchedWithNotice++;
     if (!unitPrice && !lineTotal) missingPrice++;
 
-    const noticeQtyFromLine = noticeHit
-      ? (noticeHit.quantity?.trim() ||
-          extractQuantityFromTabularGoodsLine(noticeHit.rawLine) ||
-          "")
-      : "";
+    const noticeQtyFromLine = noticeHit ? extractExplicitHeaderQuantity(noticeHit.rawLine) : "";
     const qtyFromTz = (tz.quantity ?? "").trim();
     const qtyChoice = chooseTrustedQuantity({
       noticeQty: noticeQtyFromLine,
-      tzQty: qtyFromTz,
-      aiQty: (bestAi?.quantity ?? "").trim()
+      tzQty: qtyFromTz
     });
     const qtyFinal = qtyChoice.value;
     const quantitySource: GoodsSourceAuditRow["quantitySource"] = qtyChoice.source;

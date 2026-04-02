@@ -56,12 +56,13 @@ function isLikelyServiceOrCharacteristicLine(line: string): boolean {
 
 function lineHasGoodsRowSignals(line: string): boolean {
   const t = line.toLowerCase();
-  if (/\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5}/.test(t)) return true; // КТРУ
+  if (/\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5,8}/.test(t)) return true; // КТРУ
   if (/\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t)) return true; // ОКПД
   if (/\b20\d{7,11}\b/.test(t)) return true; // реестровый id позиции
   if (/\b(?:кол-?во|количество|ед\.?\s*изм|единиц[аы]\s+измерения|цена\s+за\s+ед|стоимост[ьи])\b/.test(t))
     return true;
-  if (/\b\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)\b/.test(t)) return true;
+  if (/(?:^|\s)\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)(?:\s|$|[|;,.])/i.test(t))
+    return true;
   if (/(?:руб|₽)/i.test(line)) return true;
   if (/\|/.test(line) || /\t/.test(line)) return true;
   if (/\b(картридж|тонер|фотобарабан|барабан|расходн(?:ый|ого)\s+материал|принтер|мфу|бумаг[аи])\b/.test(t))
@@ -69,16 +70,44 @@ function lineHasGoodsRowSignals(line: string): boolean {
   return false;
 }
 
+function hasExplicitQtyUnit(line: string): boolean {
+  return /(?:^|\s)\d+(?:[.,]\d+)?\s*(шт|пач|упак|компл|комплект|кг|л|м2|м3|усл\.?\s*ед)(?:\s|$|[|;,.])/i.test(
+    line
+  );
+}
+
+function hasIdSignal(line: string): boolean {
+  const t = line.toLowerCase();
+  return (
+    /\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{5,8}/.test(t) || // КТРУ
+    /\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?/.test(t) || // ОКПД
+    /\b20\d{7,11}\b/.test(t) // реестровый id
+  );
+}
+
+function hasMoneySignal(line: string): boolean {
+  return /(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:руб|₽)/i.test(line);
+}
+
+function looksLikeItemHeaderBlockLine(line: string): boolean {
+  const t = line.toLowerCase();
+  if (isLikelyServiceOrCharacteristicLine(line)) return false;
+  if (/\|/.test(line) || /\t/.test(line)) return true;
+  return /\b(товар|позиц|картридж|тонер|фотобарабан|барабан|расходн(?:ый|ого)\s+материал)\b/.test(t);
+}
+
 function hasTopLevelGoodsSignalsAround(lines: string[], idx: number): boolean {
-  const from = Math.max(0, idx - 1);
-  const to = Math.min(lines.length - 1, idx + 2);
-  for (let i = from; i <= to; i++) {
-    const line = lines[i] ?? "";
-    if (!line.trim()) continue;
-    if (isLikelyServiceOrCharacteristicLine(line)) continue;
-    if (lineHasGoodsRowSignals(line)) return true;
-  }
-  return false;
+  const line = lines[idx] ?? "";
+  const next = lines[idx + 1] ?? "";
+  const block = `${line}\n${next}`;
+  const hasHeader = looksLikeItemHeaderBlockLine(line) || lineHasGoodsRowSignals(line);
+  if (!hasHeader) return false;
+  const hasId = hasIdSignal(block);
+  const hasQty = hasExplicitQtyUnit(block);
+  if (!hasId || !hasQty) return false;
+  const hasPrice = hasMoneySignal(block);
+  const hasTableHeaderHints = /[\t|]/.test(block) || /\b(кол-?во|количество|ед\.?\s*изм|цена|стоимост)\b/i.test(block);
+  return hasPrice || hasTableHeaderHints || (hasIdSignal(line) && hasExplicitQtyUnit(line));
 }
 
 function isTrustedTopLevelGoodsPositionLine(lines: string[], idx: number, posNum: number): boolean {
@@ -86,7 +115,23 @@ function isTrustedTopLevelGoodsPositionLine(lines: string[], idx: number, posNum
   if (isLikelyServiceOrCharacteristicLine(line)) return false;
   if (posNum < 1 || posNum > 5000) return false;
   /** Не доверяем "голым" нумерованным строкам без локальных сигналов товарного блока. */
+  const block = `${line}\n${lines[idx + 1] ?? ""}`;
+  if (!hasIdSignal(block)) return false;
+  if (!hasExplicitQtyUnit(block)) return false;
   return hasTopLevelGoodsSignalsAround(lines, idx);
+}
+
+function buildContinuousAnchoredOrdinals(sorted: number[]): number[] {
+  if (!sorted.length) return [];
+  if (sorted[0] !== 1) return [];
+  const out: number[] = [1];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = out[out.length - 1]!;
+    const cur = sorted[i]!;
+    if (cur === prev + 1) out.push(cur);
+    else break;
+  }
+  return out.length >= 2 ? out : [];
 }
 
 /**
@@ -187,12 +232,13 @@ export function inferExpectedGoodsCoverage(corpus: string): GoodsExpectedCoverag
   };
 
   /** Если в таблице только «мягкая» нумерация, но ≥2 строк — используем её для expected list (минимальный патч против «всего 5»). */
-  const tableNums =
+  const tableNumsRaw =
     uniqSorted.length >= 2
       ? uniqSorted
       : numsRelaxed.length >= 2
         ? [...new Set(numsRelaxed)].sort((a, b) => a - b)
         : uniqSorted;
+  const tableNums = buildContinuousAnchoredOrdinals(tableNumsRaw);
 
   if (tableNums.length >= 2) {
     const maxFromTable = Math.max(...tableNums);
