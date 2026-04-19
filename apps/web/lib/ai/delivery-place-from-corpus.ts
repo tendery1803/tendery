@@ -233,8 +233,8 @@ function dedupePlaceStrings(arr: string[]): string[] {
   const res: string[] = [];
   for (const x of arr) {
     const t = x.replace(/\s+/g, " ").trim();
-    const k = normalizePlaceKey(t);
-    if (k.length < 10 || seen.has(k)) continue;
+    const k = normalizeDeliveryPlaceForDedupe(t);
+    if (k.length < 8 || seen.has(k)) continue;
     seen.add(k);
     res.push(t);
   }
@@ -344,6 +344,53 @@ function normalizePlaceKey(s: string): string {
     .replace(/\s+/g, " ")
     .replace(/[.,;]+$/g, "")
     .trim();
+}
+
+/**
+ * Stronger normalization key for deduplication of delivery place strings.
+ *
+ * Extends normalizePlaceKey by also collapsing all whitespace adjacent to internal
+ * punctuation (commas, periods, semicolons).  This makes formatting variants of the
+ * same address produce the same key, e.g.:
+ *   "г. Москва, ул. Садовая, д. 1"  →  "г.москва,ул.садовая,д.1"
+ *   "г.Москва,ул.Садовая,д.1"       →  "г.москва,ул.садовая,д.1"  ← same key ✓
+ *   "г. Москва , ул. Садовая ,д.1"  →  "г.москва,ул.садовая,д.1"  ← same key ✓
+ *
+ * Genuinely different addresses still produce different keys because the numeric
+ * parts (building number, postal code, etc.) are preserved unchanged.
+ */
+export function normalizeDeliveryPlaceForDedupe(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, " ")           // collapse multiple whitespace
+    .replace(/\s*([.,;])\s*/g, "$1") // remove spaces adjacent to punctuation
+    .replace(/[.,;]+$/g, "")        // strip trailing punctuation
+    .trim();
+}
+
+/**
+ * Deduplicate an array of delivery place strings.
+ *
+ * Preserves order and keeps genuinely different addresses while removing exact
+ * duplicates and formatting variants (different spacing / punctuation around
+ * abbreviations) of the same address.
+ *
+ * Use instead of — or alongside — the internal dedupePlaceStrings when entries
+ * may originate from multiple documents with inconsistent OCR/formatting.
+ */
+export function dedupeDeliveryPlaces(parts: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const p of parts) {
+    const t = p.replace(/\s+/g, " ").trim();
+    if (!t) continue;
+    const key = normalizeDeliveryPlaceForDedupe(t);
+    if (key.length < 8) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(t);
+  }
+  return result;
 }
 
 export function parseDeliveryPlaceParts(value: string): string[] {
@@ -524,8 +571,8 @@ function dedupeScored(items: Scored[]): Scored[] {
   const seen = new Set<string>();
   const res: Scored[] = [];
   for (const it of items) {
-    const k = normalizePlaceKey(it.text);
-    if (k.length < 10) continue;
+    const k = normalizeDeliveryPlaceForDedupe(it.text);
+    if (k.length < 8) continue;
     if (seen.has(k)) continue;
     seen.add(k);
     res.push(it);
@@ -549,8 +596,8 @@ function mergePlacePartsDedup(a: string[], b: string[]): string[] {
   const res: string[] = [];
   for (const x of [...a, ...b]) {
     const t = x.replace(/\s+/g, " ").trim();
-    const k = normalizePlaceKey(t);
-    if (k.length < 10 || seen.has(k)) continue;
+    const k = normalizeDeliveryPlaceForDedupe(t);
+    if (k.length < 8 || seen.has(k)) continue;
     seen.add(k);
     res.push(t);
   }

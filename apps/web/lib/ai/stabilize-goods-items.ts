@@ -4,11 +4,26 @@
  */
 
 import type { TenderAiGoodItem } from "@tendery/contracts";
-import { lineLooksLikeTechSpecGoodsRow } from "@/lib/ai/extract-goods-from-tech-spec";
-import { extractModelTokens, normalizeGoodsMatchingKey } from "@/lib/ai/match-goods-across-sources";
+import type { ExtractGoodsFromTechSpecResult } from "@/lib/ai/extract-goods-from-tech-spec";
+import {
+  formatQuantityValueForStorage,
+  lineLooksLikeTechSpecGoodsRow
+} from "@/lib/ai/extract-goods-from-tech-spec";
+import {
+  extractModelTokens,
+  extractTrustedQuantityFromItemBlock,
+  normalizeGoodsMatchingKey
+} from "@/lib/ai/match-goods-across-sources";
 
 function normWs(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function canonicalGoodsQtyForDedupe(g: TenderAiGoodItem): string {
+  if (g.quantityValue != null && Number.isFinite(g.quantityValue)) {
+    return normWs(formatQuantityValueForStorage(g.quantityValue));
+  }
+  return normWs(g.quantity ?? "");
 }
 
 /** Грубый разбор суммы из поля НМЦК / денег в строке. */
@@ -173,9 +188,11 @@ export function countGoodsLikeSpecificationLines(text: string): number {
 function itemHasCoreSpecificationFields(g: TenderAiGoodItem): boolean {
   const name = (g.name ?? "").trim();
   const q = (g.quantity ?? "").trim();
+  const hasQtyNum =
+    g.quantityValue != null && Number.isFinite(g.quantityValue) && g.quantityValue >= 0;
   const codes = (g.codes ?? "").trim();
   if (name.length < 2) return false;
-  if (!/\d/.test(q)) return false;
+  if (!/\d/.test(q) && !hasQtyNum) return false;
   if (codes.length >= 4) return true;
   return name.length >= 8;
 }
@@ -202,6 +219,7 @@ function itemHasLooseTechPriorityRow(g: TenderAiGoodItem): boolean {
   if (itemHasCoreSpecificationFields(g)) return false;
   const name = (g.name ?? "").trim();
   const q = (g.quantity ?? "").trim();
+  const hasQtyNum = g.quantityValue != null && Number.isFinite(g.quantityValue);
   const pid = (g.positionId ?? "").replace(/^№\s*/i, "").trim();
   const regPid = /^\d{8,14}$/.test(pid);
   const shortPid = /^\d{1,4}$/.test(pid);
@@ -222,7 +240,7 @@ function itemHasLooseTechPriorityRow(g: TenderAiGoodItem): boolean {
   if (!hasCode && !regPid && !shortPid && !/^spec-missing-\d+$/i.test(pid)) return false;
 
   if (hasCode) {
-    if (/\d/.test(q)) return true;
+    if (/\d/.test(q) || hasQtyNum) return true;
     if (shortPid || regPid) return true;
     if (
       name.length >= 10 &&
@@ -237,13 +255,20 @@ function itemHasLooseTechPriorityRow(g: TenderAiGoodItem): boolean {
   return /^spec-missing-\d+$/i.test(pid);
 }
 
+/** Ниже этого порога имя часто только заголовок строки ЕИС («Картридж для»), без п/п — режем коллизии по quantity. */
+const TECH_PRIORITY_SHORT_NAME_MAX = 40;
+
 function techPriorityRowSignature(g: TenderAiGoodItem): string {
   const p = normWs((g.positionId ?? "").replace(/^№\s*/i, ""));
   const c = extractStructuralCodeSegment(g)
     .replace(/[^a-z0-9.\-]/gi, "")
     .slice(0, 48);
   const n = normWs(g.name ?? "").slice(0, 96);
-  return `${p}|${c}|${n}`;
+  let sig = `${p}|${c}|${n}`;
+  if (!p && n.length > 0 && n.length < TECH_PRIORITY_SHORT_NAME_MAX) {
+    sig += `|q:${canonicalGoodsQtyForDedupe(g)}`;
+  }
+  return sig;
 }
 
 /** Строгие + ослабленные кандидаты, дедуп по positionId+codes+name (не схлопывать разные реестровые строки). */
@@ -302,7 +327,7 @@ function dedupeGoodsItemsByCodeQtyPrice(items: TenderAiGoodItem[]): TenderAiGood
     const toks = extractModelTokens(nk);
     const modelKey = toks.sort().join("+") || nk.slice(0, 48);
     const code = normWs(g.codes ?? "").replace(/[^a-z0-9.\-]/gi, "");
-    const q = normWs(g.quantity ?? "");
+    const q = canonicalGoodsQtyForDedupe(g);
     const up = normWs(g.unitPrice ?? "");
     const lt = normWs(g.lineTotal ?? "");
     const pid = normWs(g.positionId ?? "");
@@ -326,7 +351,7 @@ function dedupeGoodsItemsTechSpecStrict(items: TenderAiGoodItem[]): TenderAiGood
     const tokPart = extractModelTokens(nk).sort().join("+");
     const nameSig = normWs(g.name ?? "").slice(0, 160);
     const code = normWs(g.codes ?? "").replace(/[^a-z0-9.\-]/gi, "");
-    const q = normWs(g.quantity ?? "");
+    const q = canonicalGoodsQtyForDedupe(g);
     const up = normWs(g.unitPrice ?? "");
     const lt = normWs(g.lineTotal ?? "");
     const pid = normWs(g.positionId ?? "");
@@ -410,6 +435,9 @@ export function stabilizeGoodsItems(
   if (options.techSpecDeterministicMode) {
     let out = filterGoodsItemsTechPriorityRegion(items);
     out = dedupeGoodsItemsTechSpecStrict(out);
+    if (out.length === 0 && items.length > 0) {
+      out = dedupeGoodsItemsTechSpecStrict(items);
+    }
     return out;
   }
   const { text: regionText, score: regionScore } = pickBestGoodsListRegion(options.corpus ?? "");
@@ -417,4 +445,86 @@ export function stabilizeGoodsItems(
   out = dedupeGoodsItemsByCodeQtyPrice(out);
   out = trimGoodsItemsToNmckCeiling(out, options.nmckText ?? "");
   return out;
+}
+
+function dedupeGoodsItemsByNameAndQuantity(items: TenderAiGoodItem[]): TenderAiGoodItem[] {
+  const seen = new Set<string>();
+  const out: TenderAiGoodItem[] = [];
+  for (const g of items) {
+    const key = `${normWs((g.name ?? "").slice(0, 160))}|${canonicalGoodsQtyForDedupe(g)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(g);
+  }
+  return out;
+}
+
+/**
+ * После reconcile/sanitize: не отдаём пустой список товаров для goods-like тендера.
+ * Сначала строки из уже посчитанного бандла ТЗ, затем одна строка из корпуса (существующие эвристики региона).
+ */
+export function ensureGoodsItemsNonEmptyAfterPipeline(
+  bundle: ExtractGoodsFromTechSpecResult | null | undefined,
+  corpus: string
+): TenderAiGoodItem[] {
+  const fromBundle = dedupeGoodsItemsByNameAndQuantity(bundle?.items ?? []);
+  if (fromBundle.length > 0) return fromBundle;
+
+  const region = pickBestGoodsListRegion(corpus ?? "").text;
+  for (const raw of region.split("\n")) {
+    const line = raw.trim();
+    if (!lineHasNameQtyAndPrice(line)) continue;
+    const qtyRaw = extractTrustedQuantityFromItemBlock(line) || "";
+    const name = line.length <= 320 ? line : line.slice(0, 320);
+    return [
+      {
+        name,
+        codes: "",
+        unit: "шт",
+        quantity: qtyRaw,
+        positionId: "",
+        unitPrice: "",
+        lineTotal: "",
+        sourceHint: "corpus_fallback_min_one",
+        characteristics: [],
+        quantityUnit: "",
+        quantitySource: "unknown"
+      }
+    ];
+  }
+
+  const t = (corpus ?? "").replace(/\s+/g, " ").trim();
+  if (t.length >= 40) {
+    return [
+      {
+        name: t.slice(0, 320),
+        codes: "",
+        unit: "шт",
+        quantity: "",
+        positionId: "",
+        unitPrice: "",
+        lineTotal: "",
+        sourceHint: "corpus_fallback_min_one",
+        characteristics: [],
+        quantityUnit: "",
+        quantitySource: "unknown"
+      }
+    ];
+  }
+
+  return [
+    {
+      name: "Объект закупки",
+      codes: "",
+      unit: "шт",
+      quantity: "",
+      positionId: "",
+      unitPrice: "",
+      lineTotal: "",
+      sourceHint: "corpus_fallback_min_one",
+      characteristics: [],
+      quantityUnit: "",
+      quantitySource: "unknown"
+    }
+  ];
 }

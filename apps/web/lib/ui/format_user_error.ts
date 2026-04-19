@@ -37,7 +37,8 @@ const MESSAGES: Record<string, string> = {
   billing_schema_outdated:
     "Схема БД не совпадает с кодом: выполните миграции — «pnpm -C packages/db run migrate:deploy» (из корня репозитория, Docker с Postgres должен быть запущен).",
   prisma_client_missing:
-    "Сервер не собран: выполните в корне репозитория «pnpm -C packages/db run generate» и перезапустите web."
+    "Сервер не собран: выполните в корне репозитория «pnpm -C packages/db run generate» и перезапустите web.",
+  duplicate_pid: "Этот реестровый номер уже занят другой позицией в разборе."
 };
 
 /** Разделитель: после кода ошибки показываем техническую деталь (с сервера). */

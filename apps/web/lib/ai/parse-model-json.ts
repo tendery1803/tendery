@@ -1,4 +1,10 @@
-import { TenderAiParseResultSchema, type TenderAiParseResult } from "@tendery/contracts";
+import {
+  TenderAiParseResultSchema,
+  type TenderAiGoodItem,
+  type TenderAiParseResult
+} from "@tendery/contracts";
+import { formatQuantityValueForStorage } from "@/lib/ai/extract-goods-from-tech-spec";
+import { coerceGoodsQuantityUnitFields } from "@/lib/ai/match-goods-across-sources";
 import { maskPiiForAi } from "@/lib/ai/mask-pii-for-ai";
 
 /** Обрезка для логов при AI_PARSE_DIAGNOSTIC_SNIPPET (фрагмент ответа модели). */
@@ -6,6 +12,49 @@ const MAX_DIAG_SNIPPET = 2000;
 
 function stripLeadingBom(s: string): string {
   return s.replace(/^\uFEFF/, "");
+}
+
+function toOptionalPositionIdStatus(
+  value: unknown
+): "resolved" | "resolved_auto" | "resolved_manual" | "ambiguous" | "missing" | undefined {
+  const s = typeof value === "string" ? value.trim() : "";
+  if (
+    s === "resolved" ||
+    s === "resolved_auto" ||
+    s === "resolved_manual" ||
+    s === "ambiguous" ||
+    s === "missing"
+  ) {
+    return s;
+  }
+  return undefined;
+}
+
+function toOptionalPositionIdCandidates(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: string[] = [];
+  for (const x of value) {
+    const s = typeof x === "string" ? x.trim() : x != null ? String(x).trim() : "";
+    if (s) out.push(s);
+  }
+  return out.length ? out : undefined;
+}
+
+function toOptionalPositionIdUserConfirmed(value: unknown): boolean | undefined {
+  if (value === true) return true;
+  if (value === false) return false;
+  return undefined;
+}
+
+function toOptionalPositionIdAutoAssigned(value: unknown): boolean | undefined {
+  if (value === true) return true;
+  if (value === false) return false;
+  return undefined;
+}
+
+function toOptionalCharacteristicsStatus(value: unknown): "not_present" | undefined {
+  const s = typeof value === "string" ? value.trim() : "";
+  return s === "not_present" ? "not_present" : undefined;
 }
 
 /** Для серверных логов: без сырых ПДн и секретов (ТЗ п. 2.3 / 15). */
@@ -123,6 +172,144 @@ function toConfidence(v: unknown): number {
   return 0;
 }
 
+const GOODS_QTY_SOURCE_SET = new Set<string>(["tech_spec", "ai", "notice", "merged", "unknown"]);
+
+function toOptionalGoodsQuantityValue(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 999_999) return v;
+  if (typeof v === "string") {
+    const t = v.trim().replace(/\s/g, "").replace(",", ".");
+    const n = parseFloat(t);
+    if (Number.isFinite(n) && n >= 0 && n <= 999_999) return n;
+  }
+  return undefined;
+}
+
+function toGoodsQuantitySourceString(v: unknown): string {
+  const s = typeof v === "string" ? v.trim() : "";
+  return GOODS_QTY_SOURCE_SET.has(s) ? s : "unknown";
+}
+
+/** Начало блока характеристик / инструкций внутри склеенного name — не входит в top-level позицию. */
+const GOODS_NAME_CUT_MARKERS: RegExp[] = [
+  /\n\s*Характеристик/i,
+  /\n\s*Наименование\s+характеристик/i,
+  /\n\s*Значение\s+характеристик/i,
+  /\n\s*Инструкц(?:ия|ии)\s+по\s+заполнению/i,
+  /\n\s*Обоснование\s+включен/i,
+  /\n\s*Дополнительн(?:ая|ые)\s+информаци/i,
+  /\n\s*Свойств[ао]\s+товар/i
+];
+
+/** Следующая строка с п/п (другая позиция в том же поле name). */
+const GOODS_NAME_NEXT_ORDINAL = /\n\s*\d{1,2}\s*[\.)]\s+(?:[А-ЯЁA-Z0-9]|Картридж|Тонер|Фотобарабан|СНПЧ|Расходный)/i;
+
+/** Без \\b после ед.изм.: в JS граница слова для кириллицы ненадёжна; хвост фиксируем lookahead. */
+const QTY_WITH_UNIT_RE =
+  /(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:шт|ед\.?\s*изм|упак|компл|комплект)(?=\s|\.|,|;|\)|$|[\u00A0])/gi;
+
+function trimGoodsNameToTopLevel(name: string): string {
+  const n = (name ?? "").replace(/\r\n/g, "\n");
+  if (!n.trim()) return "";
+  let end = n.length;
+  for (const re of GOODS_NAME_CUT_MARKERS) {
+    const idx = n.search(re);
+    if (idx >= 0) end = Math.min(end, idx);
+  }
+  const ordIdx = n.search(GOODS_NAME_NEXT_ORDINAL);
+  if (ordIdx > 0) end = Math.min(end, ordIdx);
+  return n.slice(0, end).trim();
+}
+
+function parseQtyNumberToken(raw: string): number {
+  return parseFloat(raw.replace(/\s/g, "").replace(",", "."));
+}
+
+function quantityCandidateIsPlausible(num: number, fullMatch: string): boolean {
+  if (!Number.isFinite(num) || num <= 0 || num > 999_999) return false;
+  if (Number.isInteger(num)) {
+    if (num >= 100_000) return false;
+    return true;
+  }
+  const low = fullMatch.toLowerCase();
+  if (!/(?:шт|ед|упак|компл)/i.test(low)) return false;
+  return num <= 500;
+}
+
+/**
+ * Количество только из верхней части позиции (header + 1–2 строки), не из характеристик.
+ */
+function extractQuantityFromTopLevelBlock(block: string, modelQuantity: string): string {
+  const trimmed = block.trim();
+  if (!trimmed) return modelQuantity.trim();
+
+  const lines = trimmed.split("\n");
+  const windowPrimary = lines.slice(0, 3).join("\n").slice(0, 600);
+  const windowExtended = lines.slice(0, 5).join("\n").slice(0, 900);
+  const windows = windowExtended === windowPrimary ? [windowPrimary] : [windowPrimary, windowExtended];
+
+  for (const w of windows) {
+    QTY_WITH_UNIT_RE.lastIndex = 0;
+    const matches = [...w.matchAll(QTY_WITH_UNIT_RE)];
+    let best: { val: string; idx: number } | null = null;
+    for (const m of matches) {
+      const raw = m[1]!;
+      const num = parseQtyNumberToken(raw);
+      if (!quantityCandidateIsPlausible(num, m[0]!)) continue;
+      const idx = m.index ?? 0;
+      if (!best || idx < best.idx) best = { val: normalizeQtyString(raw), idx };
+    }
+    if (best) return best.val;
+  }
+
+  return modelQuantity.trim();
+}
+
+function normalizeQtyString(raw: string): string {
+  const t = raw.replace(/\s/g, "").replace(",", ".");
+  const n = parseFloat(t);
+  if (Number.isInteger(n)) return String(Math.trunc(n));
+  return t;
+}
+
+export function finalizeGoodsItemsFromModelOutput(items: TenderAiGoodItem[] | undefined): TenderAiGoodItem[] {
+  if (!items?.length) return items ?? [];
+  const normalized = items.map((g) => {
+    if (!g || typeof g !== "object") return g;
+    const topName = trimGoodsNameToTopLevel(g.name ?? "");
+    const nameOut = topName || (g.name ?? "").trim();
+    const block = topName || (g.name ?? "").trim();
+    const techLocked =
+      g.quantitySource === "tech_spec" &&
+      g.quantityValue != null &&
+      Number.isFinite(g.quantityValue);
+    if (techLocked) {
+      const quantity = formatQuantityValueForStorage(g.quantityValue!);
+      const unitOut =
+        (g.quantityUnit || "").trim() || (g.unit || "").trim() || (quantity ? "шт" : "");
+      return {
+        ...g,
+        name: nameOut,
+        quantity,
+        unit: unitOut,
+        quantityUnit: (g.quantityUnit || "").trim() || unitOut,
+        quantitySource: "tech_spec" as const
+      };
+    }
+    const coerced = coerceGoodsQuantityUnitFields(g.quantity ?? "", g.unit ?? "");
+    const qtyFromBlock = extractQuantityFromTopLevelBlock(block, coerced.quantity || g.quantity || "");
+    const quantity = qtyFromBlock || coerced.quantity || "";
+    const unit = (coerced.unit || g.unit || "").trim() || (quantity ? "шт" : "");
+    return {
+      ...g,
+      name: nameOut,
+      quantity,
+      unit
+    };
+  });
+  return normalized;
+}
+
 /**
  * Лёгкая нормализация «почти-валидного» JSON от модели.
  * Не меняет структуру кардинально: только исправляет типовые типы (null/number/string) для известных полей.
@@ -144,7 +331,7 @@ function normalizeTenderAiPayloadLoosely(value: unknown): unknown {
       })
     : obj.fields;
 
-  const goodsItems = Array.isArray(obj.goodsItems)
+  const goodsItemsRaw = Array.isArray(obj.goodsItems)
     ? obj.goodsItems.map((g) => {
         if (!g || typeof g !== "object") return g;
         const item = g as Record<string, unknown>;
@@ -159,6 +346,13 @@ function normalizeTenderAiPayloadLoosely(value: unknown): unknown {
               };
             })
           : [];
+        const qVal = toOptionalGoodsQuantityValue(item.quantityValue);
+        const qSrc = toGoodsQuantitySourceString(item.quantitySource);
+        const pidStat = toOptionalPositionIdStatus(item.positionIdStatus);
+        const pidCands = toOptionalPositionIdCandidates(item.positionIdCandidates);
+        const pidUserConf = toOptionalPositionIdUserConfirmed(item.positionIdUserConfirmed);
+        const pidAutoAsg = toOptionalPositionIdAutoAssigned(item.positionIdAutoAssigned);
+        const chStatus = toOptionalCharacteristicsStatus(item.characteristicsStatus);
         return {
           name: toSafeString(item.name),
           positionId: toSafeString(item.positionId),
@@ -168,10 +362,21 @@ function normalizeTenderAiPayloadLoosely(value: unknown): unknown {
           unitPrice: toSafeString(item.unitPrice),
           lineTotal: toSafeString(item.lineTotal),
           sourceHint: toSafeString(item.sourceHint),
-          characteristics: chars
+          characteristics: chars,
+          quantityUnit: toSafeString(item.quantityUnit),
+          quantitySource: qSrc,
+          ...(qVal !== undefined ? { quantityValue: qVal } : {}),
+          ...(pidStat ? { positionIdStatus: pidStat } : {}),
+          ...(pidCands ? { positionIdCandidates: pidCands } : {}),
+          ...(pidUserConf !== undefined ? { positionIdUserConfirmed: pidUserConf } : {}),
+          ...(pidAutoAsg !== undefined ? { positionIdAutoAssigned: pidAutoAsg } : {}),
+          ...(chStatus ? { characteristicsStatus: chStatus } : {})
         };
       })
     : obj.goodsItems;
+  const goodsItems = Array.isArray(goodsItemsRaw)
+    ? finalizeGoodsItemsFromModelOutput(goodsItemsRaw as TenderAiGoodItem[])
+    : goodsItemsRaw;
 
   const servicesOfferings = Array.isArray(obj.servicesOfferings)
     ? obj.servicesOfferings.map((s) => {
@@ -303,7 +508,13 @@ export function parseTenderAiResult(outputText: string):
       continue;
     }
 
-    return { ok: true, data: parsed.data };
+    return {
+      ok: true,
+      data: {
+        ...parsed.data,
+        goodsItems: finalizeGoodsItemsFromModelOutput(parsed.data.goodsItems)
+      }
+    };
   }
 
   if (sawValidJson) {

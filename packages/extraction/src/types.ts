@@ -1,16 +1,24 @@
 export type ExtractionConfig = {
   /** Макс. длина сохраняемого текста (обрезка). */
   textMaxChars: number;
-  /** ZIP: макс. число файлов (всех вложенных). */
+  /** ZIP / 7z / RAR: макс. число файлов в одном архиве. */
   zipMaxFiles: number;
-  /** ZIP: суммарный несжатый размер (байты). */
+  /** Суммарный заявленный несжатый размер внутри одного архива (байты). */
   zipMaxTotalUncompressedBytes: number;
-  /** ZIP: макс. глубина вложенности путей (0 = только файлы в корне архива). */
+  /** Макс. глубина пути внутри архива (0 = только корень). */
   zipMaxDepth: number;
-  /** ZIP: макс. уровень вложенных .zip внутри .zip. */
+  /** Макс. уровень вложенных архивов (zip в zip, rar в zip и т.д.). */
   zipMaxNestLevel: number;
-  /** ZIP: макс. размер одной записи (несжатый). */
+  /** Макс. размер одной записи (несжатый). */
   zipMaxEntryBytes: number;
+  /** Макс. число обработанных записей (файлов) по всему дереву вложенных архивов. */
+  archiveMaxTotalMembers: number;
+  /** Добавлять в конец текста блок диагностики распаковки. */
+  archiveDiagnosticsEnabled: boolean;
+  /** Макс. строк путей в блоке диагностики. */
+  archiveDiagnosticsMaxPaths: number;
+  /** Макс. строк событий в блоке диагностики. */
+  archiveDiagnosticsMaxEvents: number;
   /** Включить OCR для изображений (tesseract.js). */
   ocrEnabled: boolean;
 };
@@ -22,8 +30,17 @@ export type ExtractInput = {
   config: ExtractionConfig;
 };
 
+/** Метрики текстового слоя (для PDF при `extractPdf`); только диагностика, без влияния на извлечённый текст. */
+export type PdfTextLayerMetrics = {
+  medianLineLen: number;
+  linesNonEmpty: number;
+  gluedLetterDigitHitsPer10k: number;
+  hyphenLineBreaks: number;
+  maxConsecutiveShortLetterLines: number;
+};
+
 export type ExtractionOutcome =
-  | { kind: "ok"; text: string }
+  | { kind: "ok"; text: string; pdfTextLayerMetrics?: PdfTextLayerMetrics }
   | { kind: "skipped"; reason: string }
   | { kind: "quarantined"; reason: string }
   | { kind: "error"; message: string };
@@ -34,5 +51,7 @@ export type DetectedFormat =
   | "doc"
   | "spreadsheet"
   | "zip"
+  | "rar"
+  | "7z"
   | "image"
   | "unknown";

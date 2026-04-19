@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "cases": {
+    "A": {
+      "label": "Тендер с корректным разбором товаров/характеристик",
+      "tenderId": "REPLACE_WITH_GOOD_TENDER_ID",
+      "assert": {
+        "minSavedGoods": 1,
+        "minSavedCharRows": 1
+      }
+    },
+    "B": {
+      "label": "Тендер с потерей/искажением",
+      "tenderId": "REPLACE_WITH_BAD_TENDER_ID",
+      "assert": {
+        "expectedDivergence": "main_parse_ok_saved_empty"
+      }
+    }
+  },
+  "frozenMetrics": {
+    "A": null,
+    "B": null
+  }
+}

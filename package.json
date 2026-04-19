@@ -15,7 +15,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "verify:web-ai-goods": "pnpm -C apps/web run verify:ai-goods"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

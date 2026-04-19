@@ -15,13 +15,9 @@ export async function GET(
   const tender = await getTenderForCompany(tenderId, ctx.companyId);
   if (!tender) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  let items = await prisma.tenderChecklistItem.findMany({
-    where: { tenderId },
-    orderBy: { itemKey: "asc" }
-  });
-  if (items.length === 0) {
-    items = await rebuildChecklistForTender(tenderId, ctx.companyId);
-  }
+  // Always rebuild from latest done analysis so persisted rows cannot drift after a new
+  // analyze (e.g. if a prior rebuild failed or the client never called POST rebuild).
+  const items = await rebuildChecklistForTender(tenderId, ctx.companyId);
   return NextResponse.json({ items });
 }
 

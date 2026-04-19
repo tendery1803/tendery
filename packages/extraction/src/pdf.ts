@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import type { ExtractionOutcome } from "./types.js";
+import { computePdfTextLayerMetrics } from "./pdf-text-layer-metrics.js";
 
 const require = createRequire(import.meta.url);
 // pdf-parse — CommonJS
@@ -11,7 +12,8 @@ export async function extractPdf(buffer: Buffer): Promise<ExtractionOutcome> {
     const data = await pdfParse(buffer);
     const text = (data.text ?? "").trim();
     if (!text) return { kind: "skipped", reason: "pdf_empty" };
-    return { kind: "ok", text };
+    const pdfTextLayerMetrics = computePdfTextLayerMetrics(text);
+    return { kind: "ok", text, pdfTextLayerMetrics };
   } catch (e) {
     return { kind: "error", message: `pdf_parse: ${String(e)}` };
   }

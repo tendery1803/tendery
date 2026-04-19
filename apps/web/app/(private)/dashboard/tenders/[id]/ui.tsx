@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { maskPiiForAi } from "@/lib/ai/mask-pii-for-ai";
 import { formatUserError } from "@/lib/ui/format_user_error";
+import type { GoodsExtractionCheckUi } from "@/lib/tender/load-goods-extraction-check-ui";
 import { TenderWorkspace } from "./workspace";
 
 type TenderFileExtractionStatus =
@@ -84,7 +85,13 @@ function extractionLabel(s: TenderFileExtractionStatus) {
   }
 }
 
-export default function TenderDetailClient({ id }: { id: string }) {
+export default function TenderDetailClient({
+  id,
+  goodsExtractionCheck
+}: {
+  id: string;
+  goodsExtractionCheck: GoodsExtractionCheckUi | null;
+}) {
   const [tender, setTender] = React.useState<TenderDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -258,7 +265,7 @@ export default function TenderDetailClient({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <TenderWorkspace tenderId={id} onMessage={setError} />
+      <TenderWorkspace tenderId={id} onMessage={setError} goodsExtractionCheck={goodsExtractionCheck} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">

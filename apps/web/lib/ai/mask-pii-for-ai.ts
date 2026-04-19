@@ -69,8 +69,24 @@ function maskSegment(segment: string, counters: Record<string, number>): string 
   );
   t = t.replace(/\b9\d{9}\b/g, () => nextToken(counters, "PHONE"));
 
-  t = t.replace(/\b\d{4}\s?\d{6}\b/g, () => nextToken(counters, "ID_DOC"));
-  t = t.replace(/\b\d{2}\s\d{2}\s\d{6}\b/g, () => nextToken(counters, "ID_DOC"));
+  /**
+   * ПФ ЕИС: «26.20.40.120ТоварШтука927.0037080000.00» — 10 цифр между точками это сумма, не ID_DOC.
+   * Только если сразу перед ними на той же строке есть КТРУ/ОКПД + «ТоварШтука» (узко, Тенд32 и аналоги).
+   */
+  const skipIdDocIfEisGluedMoney = (rawMatch: string, offset: number, whole: string): boolean => {
+    const before = whole.slice(Math.max(0, offset - 72), offset);
+    const after = whole.slice(offset + rawMatch.length, offset + rawMatch.length + 8);
+    const eisGluedPrefix =
+      /(?:\d{2}\.\d{2}\.\d{2}\.\d{3}(?:-\d{3,5})?|\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?)Товар(?:Штука|Килограмм)\s*\d{1,6}\.$/i;
+    return eisGluedPrefix.test(before) && /^\.\d{2}\b/.test(after);
+  };
+
+  t = t.replace(/\b\d{4}\s?\d{6}\b/g, (m, offset, whole) =>
+    skipIdDocIfEisGluedMoney(m, offset, whole) ? m : nextToken(counters, "ID_DOC")
+  );
+  t = t.replace(/\b\d{2}\s\d{2}\s\d{6}\b/g, (m, offset, whole) =>
+    skipIdDocIfEisGluedMoney(m, offset, whole) ? m : nextToken(counters, "ID_DOC")
+  );
   t = t.replace(
     /\b\d{10}\b(?=\s*(?:паспорт|пасп\.|серия|№|N\s*пасп))/gi,
     () => nextToken(counters, "ID_DOC")

@@ -3,6 +3,8 @@
  * Для товаров: строгий «ТЗ-first» — побочные «спецификации» без заголовка ТЗ не попадают в backbone.
  */
 
+import { classifyDocumentByLogicalPath } from "./goods-source-routing";
+
 export type MaskedCorpusSourceSplit = {
   techText: string;
   noticeText: string;
@@ -31,7 +33,7 @@ export type GoodsCorpusClassification = {
 
 function scoreBlockTech(block: string): number {
   let s = 0;
-  if (/техническ(?:ое|их)\s+задан/i.test(block)) s += 3;
+  if (/техническ(?:ое|их|ому|ого|им|ая|ой)\s+задан/i.test(block)) s += 3;
   if (/тех\.?\s*задан/i.test(block)) s += 2;
   if (/описан(?:ие|ия)\s+объект[а]?\s+закупк/i.test(block)) s += 2;
   if (/требовани[яе]\s+к\s+характеристик/i.test(block)) s += 1;
@@ -48,8 +50,9 @@ function scoreBlockNotice(block: string): number {
   return s;
 }
 
+/** Типовые заголовки файлов: «…техническому заданию…», «…технического задания…» — иначе спецификация уходит в ancillary и не попадает в strict-tech. */
 const TZ_TITLE_RE =
-  /техническ(?:ое|их)\s+задан|тех\.?\s*задан|описан(?:ие|ия)\s+объект[а]?\s+закупк/i;
+  /техническ(?:ое|их|ому|ого|им|ая|ой)\s+задан|тех\.?\s*задан|описан(?:ие|ия)\s+объект[а]?\s+закупк/i;
 
 /** Несколько типовых колонок ТЗ в одном файле — считаем документ ТЗ даже без явного заголовка «ТЗ». */
 function hasTechSpecTableShape(block: string): boolean {
@@ -146,6 +149,72 @@ export function buildGoodsCorpusClassification(maskedFullCorpus: string): GoodsC
     strictTechText: techParts.join("\n\n"),
     strictNoticeText: noticeParts.join("\n\n"),
     ancillaryExcludedFileIndexes
+  };
+}
+
+/** Вырезает из маршрутизированного корпуса слои primary+preferred; при наличии `technical_spec` в этой вырезке добавляется fallback (см. extractPriorityLayersForGoodsTech). */
+export type GoodsPriorityCorpusSlice = {
+  usedPrioritySlice: boolean;
+  /** Корпус для детерминированного извлечения ТЗ/описания. */
+  corpusForGoodsTechExtraction: string;
+  /** logicalPath из заголовков `--- path ---` внутри вырезки. */
+  logicalPathsInPriority: string[];
+};
+
+export function extractPriorityLayersForGoodsTech(maskedFullCorpus: string): GoodsPriorityCorpusSlice {
+  const raw = maskedFullCorpus ?? "";
+  if (!/###\s*Слой:/i.test(raw)) {
+    return { usedPrioritySlice: false, corpusForGoodsTechExtraction: raw, logicalPathsInPriority: [] };
+  }
+  const idxFallback = raw.search(/###\s*Слой:\s*[^\n]*прочие/i);
+  const idxPrimary = raw.search(/###\s*Слой:\s*[^\n]*основные/i);
+  const idxPreferred = raw.search(/###\s*Слой:\s*[^\n]*дополняющие/i);
+  let start = -1;
+  if (idxPrimary >= 0) start = idxPrimary;
+  else if (idxPreferred >= 0) start = idxPreferred;
+  let slice: string;
+  if (start >= 0) {
+    slice = idxFallback > start ? raw.slice(start, idxFallback) : raw.slice(start);
+  } else {
+    slice = idxFallback > 0 ? raw.slice(0, idxFallback) : raw;
+  }
+  slice = slice.trim();
+  if (!slice) slice = raw;
+
+  /**
+   * Если в primary/preferred уже есть путь `technical_spec`, добавляем fallback-слой в корпус
+   * для детерминированного извлечения: иначе после маршрутизации ТЗ.docx в «основные» теряется
+   * печатная форма с рабочими позициями (samples: тендэксперемент 2).
+   */
+  if (start >= 0 && idxFallback > start) {
+    const scanPaths = (text: string): string[] => {
+      const pr = /^---\s+(.+?)\s+---\s*$/gm;
+      const out: string[] = [];
+      let mm: RegExpExecArray | null;
+      while ((mm = pr.exec(text)) !== null) {
+        const p = mm[1]!.replace(/\s*\((nested\s+(?:zip|rar|7z))\)\s*$/i, "").trim();
+        if (p) out.push(p);
+      }
+      return out;
+    };
+    if (scanPaths(slice).some((p) => classifyDocumentByLogicalPath(p) === "technical_spec")) {
+      slice = raw.slice(start).trim();
+    }
+  }
+
+  const paths: string[] = [];
+  const pathRe = /^---\s+(.+?)\s+---\s*$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = pathRe.exec(slice)) !== null) {
+    const p = m[1]!
+      .replace(/\s*\((nested\s+(?:zip|rar|7z))\)\s*$/i, "")
+      .trim();
+    if (p) paths.push(p);
+  }
+  return {
+    usedPrioritySlice: true,
+    corpusForGoodsTechExtraction: slice,
+    logicalPathsInPriority: [...new Set(paths)]
   };
 }
 

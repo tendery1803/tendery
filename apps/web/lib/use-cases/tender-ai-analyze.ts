@@ -13,6 +13,10 @@ import { maskPiiForAi } from "@/lib/ai/mask-pii-for-ai";
 import { sanitizeTenderAiParseResult } from "@/lib/ai/sanitize-tender-analysis-fields";
 import { rebuildChecklistForTender } from "@/lib/checklist/build-tender-checklist";
 import {
+  buildGoodsSourceRoutingReport,
+  compactGoodsSourceRoutingForAudit
+} from "@/lib/ai/goods-source-routing";
+import {
   mergeGoodsItemsListsWithDiagnostics,
   shouldSupplementGoodsItems
 } from "@/lib/ai/goods-items-merge";
@@ -40,8 +44,20 @@ import {
   extractGoodsFromTechSpec,
   shouldUseTechSpecBackbone
 } from "@/lib/ai/extract-goods-from-tech-spec";
-import { extractGoodsFromNoticePriceTable } from "@/lib/ai/extract-goods-notice-table";
-import { enhanceTechSpecBundleWithNoticeRows } from "@/lib/ai/deterministic-goods-merge";
+import { buildNoticeDeterministicRowsForGoodsMerge } from "@/lib/ai/extract-goods-notice-table";
+import {
+  dedupeTechSpecBundleCrossSource,
+  enhanceTechSpecBundleWithNoticeRows
+} from "@/lib/ai/deterministic-goods-merge";
+import { enrichSoleUnusedExternal20PidWhenSingleEmptyCartridgeRow } from "@/lib/ai/cartridge-registry-order-restore";
+import { collapseConsecutiveDuplicateGoodsModelKtruTwinsAfterReconcile } from "@/lib/ai/collapse-consecutive-duplicate-goods-model-ktru-twin";
+import { ensureGoodsItemsNonEmptyAfterPipeline } from "@/lib/ai/stabilize-goods-items";
+import {
+  normalizeFinalGoodsItemsByModelDedupe,
+  shouldApplyFinalCartridgeTzPfArchetypeLayer
+} from "@/lib/ai/goods-items-final-model-dedupe";
+import { collapseSameCodePfAnchoredOrphanTailGoodsItemsAfterAnnotate } from "@/lib/ai/collapse-same-code-orphan-tail-goods-items";
+import { annotateGoodsItemsWithPositionIdStatus } from "@/lib/ai/goods-position-id-status";
 import {
   filterGoodsItemsForTrustedRecheck,
   reconcileGoodsItemsWithDocumentSources,
@@ -133,7 +149,30 @@ function shouldStoreAiRawOutput(): boolean {
   return process.env.AI_STORE_RAW_OUTPUT === "true";
 }
 
-const ANALYSIS_PROMPT = `Ты помощник для B2B-закупок (44-ФЗ / коммерческие закупки). Текст закупки может быть фрагментирован (несколько блоков <<<фрагмент N>>>); это один и тот же тендер — сшивай таблицы и продолжай нумерацию позиций по всем фрагментам. Для delivery_place обязательно просмотри все фрагменты и все «Файл N» в начале: не останавливайся на первом найденном общем формулировании из извещения, если в другом блоке (проект договора, приложение, спецификация, ведомость) есть более конкретные адреса — итог строи по самым конкретным данным из всего корпуса.
+/**
+ * Один вызов analyze должен видеть и широкий контекст (fields), и routed-минимизацию (goods).
+ * Если wide === routed — не дублируем текст.
+ */
+function buildMainAnalyzePurchasingCorpus(wideMinimized: string, routedMinimized: string): {
+  text: string;
+  dualSection: boolean;
+} {
+  const w = wideMinimized.trimEnd();
+  const r = routedMinimized.trimEnd();
+  if (w === r) {
+    return { text: wideMinimized, dualSection: false };
+  }
+  return {
+    text:
+      "--- РАЗДЕЛ A: контекст закупки (порядок файлов; приоритет для fields и общего контекста) ---\n" +
+      wideMinimized +
+      "\n\n--- РАЗДЕЛ B: ТЗ и спецификация (маршрутизированный порядок источников; основной источник для goodsItems и characteristics) ---\n" +
+      routedMinimized,
+    dualSection: true
+  };
+}
+
+const ANALYSIS_PROMPT = `Ты помощник для B2B-закупок (44-ФЗ / коммерческие закупки). Текст закупки может быть фрагментирован (несколько блоков <<<фрагмент N>>>); это один и тот же тендер — сшивай таблицы и продолжай нумерацию позиций по всем фрагментам. Для delivery_place обязательно просмотри все фрагменты и все «Файл N» в начале: не останавливайся на первом найденном общем формулировании из извещения, если в другом блоке (проект договора, приложение, спецификация, ведомость) есть более конкретные адреса — итог строи по самым конкретным данным из всего корпуса. Если в запросе есть «--- РАЗДЕЛ A» и «--- РАЗДЕЛ B»: раздел A — полный порядок файлов (опирайся на него для fields: заказчик, номер процедуры, НМЦК, даты этапов закупки, предмет, обеспечения и т.д., а также summary); раздел B — тот же тендер в порядке primary→preferred→fallback для ТЗ/спецификации (основной источник для goodsItems и characteristics; не пропускай таблицы и характеристики из B; при полноте позиций ориентируйся на B). Для delivery_place используй оба раздела, как в правилах выше.
 
 Ответ только JSON-объект по схеме API (без markdown, без \`\`\`, без текста до/после, без комментариев).
 
@@ -347,21 +386,70 @@ export async function runTenderAiAnalyze(
     select: { originalName: true, extractedText: true }
   });
 
-  const maskedFullCorpusForDelivery = files
-    .map((f, i) => `### Файл ${i + 1}\n${maskPiiForAi(f.extractedText ?? "")}`)
-    .join("\n\n");
+  const fileInputs = files.map((f) => ({
+    originalName: f.originalName,
+    extractedText: f.extractedText ?? ""
+  }));
+  const goodsSourceRoutingReport = buildGoodsSourceRoutingReport(fileInputs);
+  const goodsSourceRoutingAudit = compactGoodsSourceRoutingForAudit(goodsSourceRoutingReport);
 
-  const { text: corpus, stats } = buildMinimizedTenderTextForAi(
-    files.map((f) => ({ extractedText: f.extractedText ?? "" }))
-  );
+  /** Широкий корпус (порядок файлов как раньше) — основной промпт: верхние поля + первичный JSON товаров. */
+  const topFieldsMinBuilt = buildMinimizedTenderTextForAi(fileInputs, null);
+  const corpusTopFields = topFieldsMinBuilt.text;
+  const minimizerStatsTopFields = topFieldsMinBuilt.stats;
 
-  if (!corpus.trim()) {
+  /** Маршрутизированный корпус — чанки, доп. проходы, expected coverage, тот же порядок, что у детерминированных goods. */
+  const goodsMinBuilt = buildMinimizedTenderTextForAi(fileInputs, {
+    routingReport: goodsSourceRoutingReport
+  });
+  const corpusGoodsMinimized = goodsMinBuilt.text;
+  const minimizerStatsGoodsRouted = goodsMinBuilt.stats;
+  const fullRawCorpusRoutedForGoods = goodsMinBuilt.fullRawCorpusForMasking;
+
+  const mainAnalyzeCorpus = buildMainAnalyzePurchasingCorpus(corpusTopFields, corpusGoodsMinimized);
+
+  const minimizationAudit = {
+    corpusSplit: {
+      mainAiPromptUses: mainAnalyzeCorpus.dualSection
+        ? "wide_plus_routed_dual_section_one_prompt"
+        : "wide_minimized_identical_to_routed_single_block",
+      goodsPipelineUses: "goods_routed_layers_keyword_minimized",
+      maskedDeterministicExtractorsUse: "routed_full_raw_masked"
+    },
+    mainAnalyzePrompt: {
+      dualSection: mainAnalyzeCorpus.dualSection,
+      combinedMinimizedChars: mainAnalyzeCorpus.text.length,
+      wideMinimizerOutChars: minimizerStatsTopFields.outChars,
+      routedMinimizerOutChars: minimizerStatsGoodsRouted.outChars
+    },
+    topFieldsMinimizer: {
+      sourceChars: minimizerStatsTopFields.sourceChars,
+      outChars: minimizerStatsTopFields.outChars,
+      fragments: minimizerStatsTopFields.fragments,
+      routing: minimizerStatsTopFields.routing
+    },
+    goodsPipelineMinimizer: {
+      sourceChars: minimizerStatsGoodsRouted.sourceChars,
+      outChars: minimizerStatsGoodsRouted.outChars,
+      fragments: minimizerStatsGoodsRouted.fragments,
+      routing: minimizerStatsGoodsRouted.routing
+    },
+    /** Обратная совместимость: поля как в прежнем `minimization` — относятся к wide-корпусу основного промпта. */
+    sourceChars: minimizerStatsTopFields.sourceChars,
+    outChars: minimizerStatsTopFields.outChars,
+    fragments: minimizerStatsTopFields.fragments,
+    routing: minimizerStatsTopFields.routing
+  };
+
+  const maskedFullCorpusForDelivery = maskPiiForAi(fullRawCorpusRoutedForGoods);
+
+  if (!corpusTopFields.trim()) {
     return { ok: false, status: 409, body: { error: "no_extracted_text" } };
   }
 
-  const gateResidual = canSendMaskedTenderPayloadToExternalAi(corpus);
-  if (!gateResidual.ok) {
-    return { ok: false, status: 422, body: { error: gateResidual.reason } };
+  const gateMainAnalyze = canSendMaskedTenderPayloadToExternalAi(mainAnalyzeCorpus.text);
+  if (!gateMainAnalyze.ok) {
+    return { ok: false, status: 422, body: { error: gateMainAnalyze.reason } };
   }
 
   const analysis = await prisma.tenderAnalysis.create({
@@ -376,7 +464,7 @@ export async function runTenderAiAnalyze(
 
   try {
     const client = getAiGatewayClient();
-    const prompt = `${ANALYSIS_PROMPT}\n\n--- ТЕКСТ ЗАКУПКИ (минимизирован) ---\n${corpus}`;
+    const prompt = `${ANALYSIS_PROMPT}\n\n--- ТЕКСТ ЗАКУПКИ ---\n${mainAnalyzeCorpus.text}`;
     if (process.env.NODE_ENV === "development") {
       console.info("[tender_ai_analyze] gateway analyze start", {
         tenderId,
@@ -421,7 +509,7 @@ export async function runTenderAiAnalyze(
     const isGoodsLike =
       mergedAi.procurementKind === "goods" || mergedAi.procurementKind === "mixed";
 
-    const expectedCoverage = isGoodsLike ? inferExpectedGoodsCoverage(corpus) : null;
+    const expectedCoverage = isGoodsLike ? inferExpectedGoodsCoverage(corpusGoodsMinimized) : null;
     const trustedExpectedPositionIds =
       isGoodsLike &&
       expectedCoverage != null &&
@@ -438,9 +526,9 @@ export async function runTenderAiAnalyze(
       expectedCoverage.confidence >= 0.75
         ? expectedCoverage.expectedItemsCount
         : null;
-    const chunkMetas = isGoodsLike ? buildGoodsSpecificationChunksWithMeta(corpus) : [];
+    const chunkMetas = isGoodsLike ? buildGoodsSpecificationChunksWithMeta(corpusGoodsMinimized) : [];
     const chunksSweepDiagnostics = isGoodsLike
-      ? diagnoseGoodsSpecificationChunksSweep(corpus, chunkMetas)
+      ? diagnoseGoodsSpecificationChunksSweep(corpusGoodsMinimized, chunkMetas)
       : null;
 
     const mergeWarnAcc: string[] = [];
@@ -657,7 +745,7 @@ export async function runTenderAiAnalyze(
           const rr = await runExtraGoodsPass(
             "goods_missing_positions",
             buildGoodsMissingPositionsPrompt({
-              corpus,
+              corpus: corpusGoodsMinimized,
               fieldsJson,
               procurementKind: pk,
               procurementMethod: pm,
@@ -682,7 +770,7 @@ export async function runTenderAiAnalyze(
           const rr = await runExtraGoodsPass(
             "goods_forced_count",
             buildGoodsForcedCountSupplementPrompt({
-              corpus,
+              corpus: corpusGoodsMinimized,
               fieldsJson,
               procurementKind: pk,
               procurementMethod: pm,
@@ -707,12 +795,16 @@ export async function runTenderAiAnalyze(
 
         if (
           supplementReason === "none" &&
-          shouldSupplementGoodsItems(corpus, mergedAi.goodsItems, mergedAi.procurementKind)
+          shouldSupplementGoodsItems(
+            corpusGoodsMinimized,
+            mergedAi.goodsItems,
+            mergedAi.procurementKind
+          )
         ) {
           const rr = await runExtraGoodsPass(
             "goods_supplement",
             buildGoodsSupplementPrompt({
-              corpus,
+              corpus: corpusGoodsMinimized,
               fieldsJson,
               procurementKind: pk,
               procurementMethod: pm,
@@ -755,7 +847,7 @@ export async function runTenderAiAnalyze(
           expectedCoverage.expectedItemsCount != null &&
           mergedAi.goodsItems.length < expectedCoverage.expectedItemsCount;
         const needHeur = shouldSupplementGoodsItems(
-          corpus,
+          corpusGoodsMinimized,
           mergedAi.goodsItems,
           mergedAi.procurementKind
         );
@@ -784,7 +876,7 @@ export async function runTenderAiAnalyze(
 
     const noticeDeterministicRows =
       isGoodsLike && maskedFullCorpusForDelivery.trim().length > 0
-        ? extractGoodsFromNoticePriceTable(maskedFullCorpusForDelivery)
+        ? buildNoticeDeterministicRowsForGoodsMerge(maskedFullCorpusForDelivery)
         : [];
     let techSpecGoodsBundle =
       isGoodsLike && maskedFullCorpusForDelivery.trim().length > 0
@@ -794,6 +886,7 @@ export async function runTenderAiAnalyze(
       techSpecGoodsBundle,
       noticeDeterministicRows
     );
+    techSpecGoodsBundle = dedupeTechSpecBundleCrossSource(techSpecGoodsBundle);
     if (process.env.TENDER_AI_GOODS_PIPELINE_TRACE === "1") {
       console.info(
         "[tender_ai_analyze] goods_pipeline_trace",
@@ -824,6 +917,30 @@ export async function runTenderAiAnalyze(
         techSpecGoodsBundle ?? undefined
       );
       data = { ...data, goodsItems: goodsSourceReconcileResult.items };
+      if (data.goodsItems.length && maskedFullCorpusForDelivery.trim()) {
+        const sole = enrichSoleUnusedExternal20PidWhenSingleEmptyCartridgeRow(
+          data.goodsItems,
+          maskedFullCorpusForDelivery
+        );
+        if (sole.enriched > 0) {
+          data = { ...data, goodsItems: sole.items };
+        }
+      }
+      if (data.goodsItems.length > 1) {
+        const tw = collapseConsecutiveDuplicateGoodsModelKtruTwinsAfterReconcile(data.goodsItems);
+        if (tw.length !== data.goodsItems.length) {
+          data = { ...data, goodsItems: tw };
+        }
+      }
+      if (data.goodsItems.length === 0 && maskedFullCorpusForDelivery.trim().length > 0) {
+        data = {
+          ...data,
+          goodsItems: ensureGoodsItemsNonEmptyAfterPipeline(
+            techSpecGoodsBundle,
+            maskedFullCorpusForDelivery
+          )
+        };
+      }
     }
 
     let goodsCompletenessAuditForMeta: GoodsCompletenessAudit | null = null;
@@ -917,6 +1034,12 @@ export async function runTenderAiAnalyze(
                 techSpecGoodsBundle ?? undefined
               );
               dataTry = { ...dataTry, goodsItems: recTry.items };
+              if (dataTry.goodsItems.length > 1) {
+                const tw = collapseConsecutiveDuplicateGoodsModelKtruTwinsAfterReconcile(dataTry.goodsItems);
+                if (tw.length !== dataTry.goodsItems.length) {
+                  dataTry = { ...dataTry, goodsItems: tw };
+                }
+              }
             }
             const ccAfter = checkGoodsCompleteness({
               corpus: corpusForGoods,
@@ -950,6 +1073,45 @@ export async function runTenderAiAnalyze(
         if (recheckDisabled) recheckReasons.push("disabled_by_env");
         else if (!hasBlock) recheckReasons.push("skipped_short_primary_block");
         else if (!scoreOk) recheckReasons.push("skipped_low_primary_block_score");
+      }
+
+      if (
+        isGoodsLike &&
+        data.goodsItems.length > 1 &&
+        shouldApplyFinalCartridgeTzPfArchetypeLayer(
+          data.goodsItems,
+          techSpecGoodsBundle?.diagnostics
+        )
+      ) {
+        const fr = normalizeFinalGoodsItemsByModelDedupe(data.goodsItems);
+        if (fr.items.length !== data.goodsItems.length) {
+          data = { ...data, goodsItems: fr.items };
+          if (process.env.TENDER_AI_GOODS_PIPELINE_TRACE === "1") {
+            console.info(
+              "[tender_ai_analyze] final_goods_model_dedupe",
+              JSON.stringify({ tenderId, diagnostics: fr.diagnostics })
+            );
+          }
+        }
+      } else if (
+        process.env.TENDER_AI_GOODS_PIPELINE_TRACE === "1" &&
+        isGoodsLike &&
+        data.goodsItems.length > 1
+      ) {
+        console.info(
+          "[tender_ai_analyze] final_goods_model_dedupe_skipped",
+          JSON.stringify({
+            tenderId,
+            reason: "no_tz_pf_cartridge_archetype_evidence"
+          })
+        );
+      }
+
+      if (isGoodsLike && data.goodsItems.length > 0) {
+        let ann = annotateGoodsItemsWithPositionIdStatus(corpusForGoods, data.goodsItems);
+        const collapsed = collapseSameCodePfAnchoredOrphanTailGoodsItemsAfterAnnotate(ann.items);
+        ann = annotateGoodsItemsWithPositionIdStatus(corpusForGoods, collapsed);
+        data = { ...data, goodsItems: ann.items };
       }
 
       const ccFinal = checkGoodsCompleteness({
@@ -1055,9 +1217,10 @@ export async function runTenderAiAnalyze(
       targetId: tenderId,
       meta: {
         analysisId: analysis.id,
-        minimization: stats,
+        minimization: minimizationAudit,
         promptVersion: TENDER_ANALYZE_PROMPT_VERSION,
         goodsExtraAiPasses,
+        goodsSourceRouting: goodsSourceRoutingAudit,
         ...(goodsCoverageAudit ? { goodsCoverageAudit } : {}),
         ...(goodsCompletenessAuditForMeta ? { goodsCompletenessAudit: goodsCompletenessAuditForMeta } : {}),
         ...(goodsSourceReconcileResult

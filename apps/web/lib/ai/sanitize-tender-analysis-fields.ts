@@ -1,15 +1,20 @@
 import type { TenderAiGoodItem, TenderAiParseResult } from "@tendery/contracts";
 import { groundGoodsItemsToMaskedCorpus } from "@/lib/ai/ground-goods-to-corpus";
 import { stabilizeGoodsItems } from "@/lib/ai/stabilize-goods-items";
-
-function shouldGroundGoodsBrandsToCorpus(): boolean {
-  return process.env.TENDER_AI_GROUND_GOODS_BRANDS === "1";
-}
 import { refineDeliveryTermAfterSanitize } from "@/lib/ai/delivery-term-post-parse";
 import {
   enhanceDeliveryPlaceFromModelAndCorpus,
   finalizeDeliveryPlaceOutput
 } from "@/lib/ai/delivery-place-from-corpus";
+import { polishGoodsDisplayName } from "@/lib/ai/polish-goods-display-name";
+import {
+  normalizeCelsiusRangeGarbles,
+  stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion
+} from "@/lib/ai/tech-spec-vertical-goods-layout";
+
+function shouldGroundGoodsBrandsToCorpus(): boolean {
+  return process.env.TENDER_AI_GROUND_GOODS_BRANDS === "1";
+}
 
 const DATES_FALLBACK =
   "В документе не найдены однозначные даты; требуется проверка вручную.";
@@ -327,8 +332,11 @@ function squeezeHeavyCharacteristicList<T extends { name: string; value: string 
 function cleanGoodsItemsCharacteristics(items: TenderAiGoodItem[]): TenderAiGoodItem[] {
   return items.map((g) => {
     const raw = (g.characteristics ?? []).map((ch) => {
-      const name = normalizeCharacteristicNameOcr(ch.name ?? "");
+      const name = stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion(
+        normalizeCelsiusRangeGarbles(normalizeCharacteristicNameOcr(ch.name ?? ""))
+      );
       let value = stripTrailingProcFromValue((ch.value ?? "").trim());
+      value = stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion(normalizeCelsiusRangeGarbles(value));
       if (META_PLACEHOLDER_CHAR_VALUE.test(value) && value.length < 200) value = "";
       return {
         ...ch,
@@ -360,7 +368,13 @@ function cleanGoodsItemsCharacteristics(items: TenderAiGoodItem[]): TenderAiGood
       });
     }
     const merged = squeezeHeavyCharacteristicList(Array.from(byName.values()));
-    return { ...g, characteristics: merged };
+    return {
+      ...g,
+      name: stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion(
+        normalizeCelsiusRangeGarbles(polishGoodsDisplayName(g.name))
+      ),
+      characteristics: merged
+    };
   });
 }
 

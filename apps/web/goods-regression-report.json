@@ -1,0 +1,1843 @@
+{
+  "generatedAt": "2026-04-19T10:59:17.272Z",
+  "regressionRoot": "/home/shylugan/tendery/samples/regression-goods",
+  "tenderCount": 43,
+  "tenders": [
+    {
+      "tenderId": "Тенд 15",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд 15",
+      "inputFiles": [
+        "0121777_ТомскГП_К_ГОС_БС.zip",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 87454,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 0121777_ТомскГП_К_ГОС_БС/Приложение 1/Спецификация без ТЗР к прейскурантному договору.xlsx --- ## Шаблон …",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 0121777_ТомскГП_К_ГОС_БС/Приложение 1/Спецификация без ТЗР к прейскурантному договору.xlsx --- ## Шаблон …",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 0121777_ТомскГП_К_ГОС_БС/Приложение 1/Спецификация без ТЗР к прейскурантному договору.xlsx --- ## Шаблон …",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд1",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд1",
+      "inputFiles": [
+        "График поставки.docx",
+        "Печатная форма.pdf",
+        "I. ИНСТРУКЦИЯ УЧАСТНИКАМ .docx",
+        "III. ТЕХНИЧЕСКАЯ ЧАСТЬ.docx",
+        "V. ПРОЕКТ КОНТРАКТА.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 42164,
+      "techBundleItemCount": 1,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=1 reference=1 ok=true",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Вид молока по способу обработки",
+          "descriptionPreview": "Больше или равно 3.20000000000"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд10",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд10",
+      "inputFiles": [
+        "Закупочная документация Том 1 часть 1_(изм).docx",
+        "ИЗВЕЩЕНИЕ О ВНЕСЕНИИ ИЗМЕНЕНИЙ от 08.04.docx",
+        "Методика расчета обеспеченности финансовыми ресурсами.docx",
+        "Техническое задание Поставка бензина и дизельного топлива г. Певек.docx",
+        "Том 1 Часть 2 Порядок проведения.docx",
+        "Том 1 Часть 3 Проект договора.docx",
+        "Ценовой_анализ_топливо.pdf",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 42074,
+      "techBundleItemCount": 2,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=2 reference=2 ok=true",
+      "metrics": {
+        "goodsCount": 2,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Топливо дизельное, класс 4, экологического класса К5 ДТ-А-К5 ГОСТ 32511-2013 (или аналог)",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Топливо дизельное, класс 4, экологического класса К5 ДТ-А-К5 ГОСТ 32511-2013 (или аналог)",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Бензин неэтилированный Регуляр-92 АИ-92-3 ГОСТ 32513-2023 (или аналог)",
+          "descriptionPreview": "Участник закупки должен принять во внимание, что ссылки в закупочной документации на товарные знаки, знаки обслуживания, фирменные наименования, патенты, полезн…"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд11",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд11",
+      "inputFiles": [
+        "Документация АЭФ (поставка автотракторных запчастей для экскаватора YANMAR).docx",
+        "Фото шильдиков экскаватора.pdf",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 105817,
+      "techBundleItemCount": 2,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=2 reference=28 ok=false",
+      "metrics": {
+        "goodsCount": 2,
+        "uniquePositionIdCount": 2,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=2 reference=28 ok=false",
+          "descriptionPreview": "ref=28 source=spec method=numbered_lines"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд12",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд12",
+      "inputFiles": [
+        "ОБОРУДОВАНИЕ ДЛЯ КУХНИ.rar",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 4477,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=28 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=28 ok=false",
+          "descriptionPreview": "ref=28 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- ОБОРУДОВАНИЕ ДЛЯ КУХНИ.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- ОБОРУДОВАНИЕ ДЛЯ КУХНИ.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- ОБОРУДОВАНИЕ ДЛЯ КУХНИ.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд13",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд13",
+      "inputFiles": [
+        "Инструкция по заполнению заявки_2025.docx",
+        "Карточка ИГМУ для обеспечений.doc",
+        "Лот 2 Техническое задание канцелярия.docx",
+        "Печатная форма.pdf",
+        "проект ГК_канцелярия Лот_2.doc"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 86061,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=18 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=18 ok=false",
+          "descriptionPreview": "ref=18 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Лот 2 Техническое задание канцелярия.docx --- Техническое задание на поставку канцелярии Лот 2 для нужд о…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Лот 2 Техническое задание канцелярия.docx --- Техническое задание на поставку канцелярии Лот 2 для нужд о…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Лот 2 Техническое задание канцелярия.docx --- Техническое задание на поставку канцелярии Лот 2 для нужд о…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд14",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд14",
+      "inputFiles": [
+        "1. Прил. №1 к изв. ООЗ.docx",
+        "3. Прил. № 3 Требование к заявке.docx",
+        "Печатная форма.pdf",
+        "Проект контракта (1).docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 86284,
+      "techBundleItemCount": 8,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=8 reference=28 ok=false",
+      "metrics": {
+        "goodsCount": 8,
+        "uniquePositionIdCount": 8,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=8 reference=28 ok=false",
+          "descriptionPreview": "ref=28 source=spec method=numbered_lines"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд16",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд16",
+      "inputFiles": [
+        "Описание объекта закупки (2).docx",
+        "Печатная форма.pdf",
+        "Проект контракта (1).docx",
+        "Требования к содержанию_ составу заявки на участие в аукционе в электронной форме и инструкция по ее заполнению (1).docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 58811,
+      "techBundleItemCount": 4,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=4 reference=4 ok=true",
+      "metrics": {
+        "goodsCount": 4,
+        "uniquePositionIdCount": 4,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд17",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд17",
+      "inputFiles": [
+        "Договор_поставки.docx",
+        "Извещение.doc",
+        "Техническое задание (1).docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 58568,
+      "techBundleItemCount": 2,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=2 reference=2 ok=true",
+      "metrics": {
+        "goodsCount": 2,
+        "uniquePositionIdCount": 2,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд18",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд18",
+      "inputFiles": [
+        "Договор__оборудования_для_столярных_мастерских._.docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 26386,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=32 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=32 ok=false",
+          "descriptionPreview": "ref=32 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__оборудования_для_столярных_мастерских._.docx --- Договор № ____ на поставку на по…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__оборудования_для_столярных_мастерских._.docx --- Договор № ____ на поставку на по…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__оборудования_для_столярных_мастерских._.docx --- Договор № ____ на поставку на по…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд19",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд19",
+      "inputFiles": [
+        "Договор__холодильник._.docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 24118,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__холодильник._.docx --- Договор № ____ на поставку на поставку холодильника в рамк…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__холодильник._.docx --- Договор № ____ на поставку на поставку холодильника в рамк…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Договор__холодильник._.docx --- Договор № ____ на поставку на поставку холодильника в рамк…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд2",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд2",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение к технической части.docx",
+        "I. ИНСТРУКЦИЯ УЧАСТНИКАМ.docx",
+        "III. ТЕХНИЧЕСКАЯ ЧАСТЬ.docx",
+        "V. ПРОЕКТ КОНТРАКТА.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 43408,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=3 reference=3 ok=true",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 2,
+        "duplicatePositionIds": 1,
+        "emptyCharacteristicsCount": 2,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "209939660",
+          "problemType": "duplicate_position_id",
+          "titlePreview": "Стоимость",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "209939660",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Стоимость",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "209939661",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Стоимость",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "209939660",
+          "problemType": "duplicate_position_id",
+          "titlePreview": "Унитаз",
+          "descriptionPreview": "оотлитой кой андальныйДа ≥ 350 и < 400 Миллиметр ≥ 600 и < 650 Миллиметр"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд20",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд20",
+      "inputFiles": [
+        "договор__компьютерная_техника..docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 23905,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- договор__компьютерная_техника..docx --- Договор № ____ на поставку интерактивной панели в …",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- договор__компьютерная_техника..docx --- Договор № ____ на поставку интерактивной панели в …",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- договор__компьютерная_техника..docx --- Договор № ____ на поставку интерактивной панели в …",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд21",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд21",
+      "inputFiles": [
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 3238,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf --- Извещение о проведении зак…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf --- Извещение о проведении зак…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf --- Извещение о проведении зак…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд22",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд22",
+      "inputFiles": [
+        "КЭФ-ВСЕ, 0077-КР-26.rar",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 3883,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- КЭФ-ВСЕ, 0077-КР-26.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_pub…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- КЭФ-ВСЕ, 0077-КР-26.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_pub…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- КЭФ-ВСЕ, 0077-КР-26.rar --- [extract:error] ### Файл 2 --- zakupki.gov.ru_223_purchase_pub…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд23",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд23",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение 1 Описание.docx.zip",
+        "Приложение 3  к Извещению об осуществлении закупки (ЭА) (6).docx.zip",
+        "Проект контракта.docx.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 75481,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=3 reference=10 ok=false",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 3,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 2,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=3 reference=10 ok=false",
+          "descriptionPreview": "ref=10 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "01902000003260039315",
+          "problemType": "empty_characteristics",
+          "titlePreview": "обязательств не требуется Информация о банковском и (или) казначейском сопровождении контракта Банковское",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "019020000032600393112",
+          "problemType": "empty_characteristics",
+          "titlePreview": "не позволяют точно определить качественные",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд24",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд24",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение 1 Описание.docx.zip",
+        "Приложение 3 Требования к заявке, инструкция..docx.zip",
+        "Проект.rar.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 43874,
+      "techBundleItemCount": 7,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=7 reference=7 ok=true",
+      "metrics": {
+        "goodsCount": 7,
+        "uniquePositionIdCount": 7,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд25",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд25",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение 1 “Описание”.docx.zip",
+        "Приложение 3  к Извещению об осуществлении закупки (ЭА).docx.zip",
+        "Проект контракта.docx.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 87899,
+      "techBundleItemCount": 15,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=13 reference=10 ok=false",
+      "metrics": {
+        "goodsCount": 13,
+        "uniquePositionIdCount": 13,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=13 reference=10 ok=false",
+          "descriptionPreview": "ref=10 source=spec method=numbered_lines"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд26",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд26",
+      "inputFiles": [
+        "АД  расх. эл..docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 32156,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- АД расх. эл..docx --- КГЭУ МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ И РОССИЙСКОЙ ФЕДЕРАЦИИ…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- АД расх. эл..docx --- КГЭУ МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ И РОССИЙСКОЙ ФЕДЕРАЦИИ…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- АД расх. эл..docx --- КГЭУ МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ И РОССИЙСКОЙ ФЕДЕРАЦИИ…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд27",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд27",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение 1 Описание объекта закупки (18).docx.zip",
+        "Приложение 3.docx.zip",
+        "Проект контракта (1).docx.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 74505,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=3 reference=23 ok=false",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 3,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 2,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=3 reference=23 ok=false",
+          "descriptionPreview": "ref=23 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "01902000003260039275",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Информация о банковском и (или) казначейском сопровождении контракта Банковское или казначейское",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "01902000003260039277",
+          "problemType": "empty_characteristics",
+          "titlePreview": "1.1 ст. 31 Закона No 44-ФЗ Применение национального режима по ст. 14 Закона No 44-ФЗ Основанием для",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд28",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд28",
+      "inputFiles": [
+        "Проект договора приборы учета-2026-04-08-1.docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 32178,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=26 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=26 ok=false",
+          "descriptionPreview": "ref=26 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Проект договора приборы учета-2026-04-08-1.docx --- ПРОЕКТ ДОГОВОРА Договор № _________ по…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Проект договора приборы учета-2026-04-08-1.docx --- ПРОЕКТ ДОГОВОРА Договор № _________ по…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Проект договора приборы учета-2026-04-08-1.docx --- ПРОЕКТ ДОГОВОРА Договор № _________ по…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд29",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд29",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Прил. 3 Требования к заявке (НЕТ В РПП) 14.01.2026 (1).docx.zip",
+        "Приложение 1 Описание.docx.zip",
+        "Приложение 4 Проект ГК.docx.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 43324,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=3 reference=3 ok=true",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 3,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 2,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "01902000003260039265",
+          "problemType": "empty_characteristics",
+          "titlePreview": "обязательств не требуется Информация о банковском и (или) казначейском сопровождении контракта Банковское",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "01902000003260039266",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Наличие Wi-FiДа Значение",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд3",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд3",
+      "inputFiles": [
+        "Извещение.doc",
+        "Проект договора.doc",
+        "Техническое задание (1).docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 65974,
+      "techBundleItemCount": 12,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=12 reference=12 ok=true",
+      "metrics": {
+        "goodsCount": 12,
+        "uniquePositionIdCount": 12,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд30",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд30",
+      "inputFiles": [
+        "2 Проект Контракта.docx",
+        "3 Описание объекта закупки.docx",
+        "4 Требования к содержанию, составу заявки на участие.docx",
+        "5 Инструкция по заполнению заявки.docx",
+        "Печатная форма.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 57562,
+      "techBundleItemCount": 2,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=2 reference=2 ok=true",
+      "metrics": {
+        "goodsCount": 2,
+        "uniquePositionIdCount": 2,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд31",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд31",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "Приложение 1 “Описание”.docx.zip",
+        "Приложение 3  к Извещению об осуществлении закупки (ЭА).docx.zip",
+        "Проект контракта.docx.zip"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 87899,
+      "techBundleItemCount": 15,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=13 reference=10 ok=false",
+      "metrics": {
+        "goodsCount": 13,
+        "uniquePositionIdCount": 13,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=13 reference=10 ok=false",
+          "descriptionPreview": "ref=10 source=spec method=numbered_lines"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд32",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд32",
+      "inputFiles": [
+        "3._Требования_к_содержанию_и_составу_заявки_(1).docx",
+        "Автоматический контроль.pdf",
+        "Описание_объекта_закупки_на_поставку_картриджей_2026_итог.docx",
+        "Печатная форма.pdf",
+        "ПРОЕКТ_контракта_на_поставку_картриджей_и_запчастей_2026[1].doc"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 237294,
+      "techBundleItemCount": 77,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=74 reference=27 ok=false",
+      "metrics": {
+        "goodsCount": 74,
+        "uniquePositionIdCount": 72,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=74 reference=27 ok=false",
+          "descriptionPreview": "ref=27 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Комплект роликов захвата бумаги из лотка HP RY7-5215-000CN 26.20.40.160 -",
+          "descriptionPreview": "ера 5Метр ии цу ество и) ость"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Модуль памяти для моноблоков",
+          "descriptionPreview": "ера 5Метр ии цу ество и) ость"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд33",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд33",
+      "inputFiles": [
+        "2 Проект контракта СМП (6).docx",
+        "3 Описание объекта (45).docx",
+        "Печатная форма.pdf",
+        "Приложение № 4.  Требования к содержанию и составу заявки (2).docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 95993,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=11 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=11 ok=false",
+          "descriptionPreview": "ref=11 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 3 Описание объекта (45).docx --- Описание объекта закупки Требования к техническим и функциональным харак…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 3 Описание объекта (45).docx --- Описание объекта закупки Требования к техническим и функциональным харак…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 3 Описание объекта (45).docx --- Описание объекта закупки Требования к техническим и функциональным харак…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд34",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд34",
+      "inputFiles": [
+        "1.Документация_аукцион_для_МСП.doc",
+        "2.Приложение_1___ИНФОРМАЦИОННАЯ_КАРТА.docx",
+        "3.Приложение_2___ОБРАЗЦЫ_ФОРМ_И_ДОКУМЕНТОВ.7z",
+        "4.Приложение_3___ПРОЕКТ_ДОГОВОРА.docx",
+        "5.Приложение_4__Описание_объекта_закупки.xlsx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 173030,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=35 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=35 ok=false",
+          "descriptionPreview": "ref=35 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 5.Приложение_4__Описание_объекта_закупки.xlsx --- ## Пионеры, модули и прочее № п/п,Наименование товара ,…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 5.Приложение_4__Описание_объекта_закупки.xlsx --- ## Пионеры, модули и прочее № п/п,Наименование товара ,…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- 5.Приложение_4__Описание_объекта_закупки.xlsx --- ## Пионеры, модули и прочее № п/п,Наименование товара ,…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд35",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд35",
+      "inputFiles": [
+        "3._Требования_ограничение_совместимые___(1)_(1).docx",
+        "4._Проект_контракта_картриджи_совмест._(2)_(1) (1).docx",
+        "4._Проект_контракта_картриджи_совмест._(2)_(1).docx",
+        "Автоматический контроль.pdf",
+        "Печатная форма.pdf",
+        "ТЗ_картриджи_совместимые_2026_(1).docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 120016,
+      "techBundleItemCount": 13,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=13 reference=13 ok=true",
+      "metrics": {
+        "goodsCount": 13,
+        "uniquePositionIdCount": 13,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд36",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд36",
+      "inputFiles": [
+        "Аукционная_документация.doc",
+        "Приложение__1__Раздел_3__для_аукциона.xlsx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 32174,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд37",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд37",
+      "inputFiles": [
+        "Конкурсная документация_КР2026-292П1.doc",
+        "Порядок оценки заявок по критериям_17121783-1.pdf",
+        "Приложение 1 к критериям оценки заявок.docx",
+        "Проект_контракта_17112835-1.pdf",
+        "Протокол МЗЦД.pdf",
+        "Техническое_задание_17112835-1.pdf",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 240048,
+      "techBundleItemCount": 1,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=24 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=24 ok=false",
+          "descriptionPreview": "ref=24 source=spec method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "1. Общая информация об объекте закупки",
+          "descriptionPreview": "1.1. Объект закупки: Поставка товаров (шторы рулонные) для оснащения образовательных"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд38",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд38",
+      "inputFiles": [
+        "Аукционная_документация.doc",
+        "Приложение__1__Раздел_3__для_аукциона.xlsx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 32174,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Аукционная_документация.doc --- УТВЕРЖДАЮ Директор ГАСУ АО Волго-Каспийский ДИПИ _________…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд39",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд39",
+      "inputFiles": [
+        "Печатная форма.pdf",
+        "ПРИЛОЖЕНИЕ № 1 Описание объекта закупки.docx",
+        "ПРИЛОЖЕНИЕ № 3 Требования к содержанию составу заявки на участие в закупке и инструкция по её заполнению.docx",
+        "ПРИЛОЖЕНИЕ № 4 Проект контракта.docx",
+        "ПРИЛОЖЕНИЕ № 5 Обеспечение заявки на участие в закупке.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 72630,
+      "techBundleItemCount": 1,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=1 reference=1 ok=true",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 1,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд4",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд4",
+      "inputFiles": [
+        "ЗК_для_СМСП_хозка_АУСО_РБ_ХОРИНСКИЙ_СДИ.docx",
+        "Приложение_1_Проект_договора_Хозка.docx",
+        "Приложение_2_ТЗ_хозка_котировки.docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 42901,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=3 reference=3 ok=true",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 3,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд40",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд40",
+      "inputFiles": [
+        "Аукционная документация на ед. цены.docx",
+        "НМЦД_.xls",
+        "Проект договора.docx",
+        "Протокол НМЦ.DOCX",
+        "Техническое задание (1).docx",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 112762,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=21 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=21 ok=false",
+          "descriptionPreview": "ref=21 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "Масло моторное синтетическое MOBIL SUPER 3000 X1 5W-40 (4 литра) (или эквивалент)",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "Масло моторное синтетическое MOBIL SUPER 3000 X1 5W-40 (4 литра) (или эквивалент)",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд5",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд5",
+      "inputFiles": [
+        "Инструкция.docx",
+        "Контракт № ЭА-125-26 (проект).docx",
+        "Описание объекта закупки (Нашивки СФ).docx",
+        "Печатная форма.pdf",
+        "Требования к содержанию заявки.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 49058,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=23 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=print_form method=numbered_lines extracted=1 reference=23 ok=false",
+          "descriptionPreview": "ref=23 source=print_form method=numbered_lines"
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Описание объекта закупки (Нашивки СФ).docx --- Характеристики товара, работы, услуги Соответствие всего т…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Описание объекта закупки (Нашивки СФ).docx --- Характеристики товара, работы, услуги Соответствие всего т…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: основные источники (goods/ТЗ) ### Файл 1 --- Описание объекта закупки (Нашивки СФ).docx --- Характеристики товара, работы, услуги Соответствие всего т…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд6",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд6",
+      "inputFiles": [
+        "1_Требования.docx",
+        "Декларирование заказчиком и (2) (1).docx",
+        "Печатная форма.pdf",
+        "прил.xlsx",
+        "Проект  контракта (14) — копия.docx",
+        "ТЗ расходники стом.docx",
+        "уведомление об отсутствии в реестре РПП и (1).docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 242073,
+      "techBundleItemCount": 1,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=17 ok=false",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 1,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(cardinality)",
+          "problemType": "cardinality_vs_docs",
+          "titlePreview": "goods_cardinality_check source=spec method=numbered_lines extracted=1 reference=17 ok=false",
+          "descriptionPreview": "ref=17 source=spec method=numbered_lines"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тенд7",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд7",
+      "inputFiles": [
+        "ЗК_для_СМСП_хозка_АУСО_РБ_ХОРИНСКИЙ_СДИ.docx",
+        "Приложение_1_Проект_договора_Хозка.docx",
+        "Приложение_2_ТЗ_хозка_котировки.docx",
+        "Приложение_3_Расчет_НМЦД_хозка_котировки.xls",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 42901,
+      "techBundleItemCount": 3,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=3 reference=3 ok=true",
+      "metrics": {
+        "goodsCount": 3,
+        "uniquePositionIdCount": 3,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд8",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд8",
+      "inputFiles": [
+        "Инструкция.docx",
+        "Описание объекта закупки (кисломолочка, молоко, сметана ).docx",
+        "Печатная форма.pdf",
+        "Проект контракта ЭА-78-26 СФ Молочка УИС, примущ..docx",
+        "Требование к содержанию и составу заявки.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 54167,
+      "techBundleItemCount": 4,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=4 reference=4 ok=true",
+      "metrics": {
+        "goodsCount": 4,
+        "uniquePositionIdCount": 4,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "Тенд9",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тенд9",
+      "inputFiles": [
+        "Документация_СМП_1.doc",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 32132,
+      "techBundleItemCount": 0,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=none method=na extracted=1 reference=null ok=null",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 0,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 1,
+        "longTitleCount": 1,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_position_id",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Документация_СМП_1.doc --- Документация о запросе котировок в электронной форме на поставк…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "empty_characteristics",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Документация_СМП_1.doc --- Документация о запросе котировок в электронной форме на поставк…",
+          "descriptionPreview": ""
+        },
+        {
+          "positionId": "(empty)",
+          "problemType": "long_title",
+          "titlePreview": "### Слой: прочие источники (fallback, объём ограничен) ### Файл 1 --- Документация_СМП_1.doc --- Документация о запросе котировок в электронной форме на поставк…",
+          "descriptionPreview": ""
+        }
+      ]
+    },
+    {
+      "tenderId": "тендэксперемент 2",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/тендэксперемент 2",
+      "inputFiles": [
+        "Мун.контракт .doc",
+        "Печатная форма.pdf",
+        "ТЕХ.ЗАДАНИЕ картриджи 2026.docx",
+        "Требования_к_содержанию_составу_заявки_и_инструкция.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 142362,
+      "techBundleItemCount": 8,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=8 reference=8 ok=true",
+      "metrics": {
+        "goodsCount": 8,
+        "uniquePositionIdCount": 8,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    },
+    {
+      "tenderId": "тендэксперемент 3",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/тендэксперемент 3",
+      "inputFiles": [
+        "Приложение к техническому заданию (спецификация).docx",
+        "Приложение № 1 к извещению (Техническое задание).doc",
+        "Приложение № 2 к извещению (Форма заявки на участие в закупке).doc",
+        "Приложение № 3 к извещению (Проект договора) (1).doc",
+        "zakupki.gov.ru_223_purchase_public_print-form_show.html.pdf"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 54655,
+      "techBundleItemCount": 35,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=35 reference=35 ok=true",
+      "metrics": {
+        "goodsCount": 35,
+        "uniquePositionIdCount": 35,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 2,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": [
+        {
+          "positionId": "3",
+          "problemType": "temperature_garble",
+          "titlePreview": "Чистящее средство для сантехники «Санокс-гель»",
+          "descriptionPreview": "средство для сантехники чистящее Санокс предназначено для чистки раковин, унитазов, ванн, фаянсовых изделий и кафеля от ржавчины, известкового налёта, водного к…"
+        },
+        {
+          "positionId": "9",
+          "problemType": "temperature_garble",
+          "titlePreview": "Средство моющее для пола и поверхностей Mr. Proper порошок 400 г",
+          "descriptionPreview": "средство для уборки всех поверхностей, которые можно мыть (полы, стены и другие большие поверхности). растворить 20 г (3 столовые ложки) в 5 л воды. Мыть швабро…"
+        }
+      ]
+    },
+    {
+      "tenderId": "Тендэксперимент1",
+      "tenderDir": "/home/shylugan/tendery/samples/regression-goods/Тендэксперимент1",
+      "inputFiles": [
+        "Приложение № 1 к извещению Техническое задание 2.docx"
+      ],
+      "rawOutputUsed": null,
+      "modelParseOk": null,
+      "modelParseError": null,
+      "maskedCorpusChars": 6444,
+      "techBundleItemCount": 1,
+      "finalDedupeApplied": false,
+      "goodsCardinalityCheckDiagnostic": "goods_cardinality_check source=tech_spec method=deterministic_parse_rows extracted=1 reference=1 ok=true",
+      "metrics": {
+        "goodsCount": 1,
+        "uniquePositionIdCount": 1,
+        "duplicatePositionIds": 0,
+        "emptyCharacteristicsCount": 0,
+        "longTitleCount": 0,
+        "descriptionEqualsPackagingCount": 0,
+        "longDescriptionCount": 0,
+        "serviceTailCount": 0,
+        "temperatureGarbleCount": 0,
+        "tailFragmentDescriptionCount": 0
+      },
+      "problemPositions": []
+    }
+  ]
+}

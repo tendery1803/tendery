@@ -17,6 +17,8 @@ export function detectFormat(filename: string, mime: string): DetectedFormat {
     return "spreadsheet";
   }
   if (e === "zip" || m === "application/zip" || m === "application/x-zip-compressed") return "zip";
+  if (e === "rar" || m === "application/x-rar-compressed" || m === "application/vnd.rar") return "rar";
+  if (e === "7z" || m === "application/x-7z-compressed") return "7z";
   if (
     e === "jpg" ||
     e === "jpeg" ||

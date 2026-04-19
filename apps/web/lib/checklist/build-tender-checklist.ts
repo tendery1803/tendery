@@ -186,6 +186,57 @@ function buildAiChecklistRows(
   return rows;
 }
 
+/** Сводка по товарам/характеристикам из сохранённого structuredBlock (для диагностики и регрессий). */
+export function computeStructuredGoodsDiagnostics(structuredBlock: unknown): {
+  schemaOk: boolean;
+  procurementKind?: string;
+  nGoods: number;
+  nServices: number;
+  charRowsTotal: number;
+  goodsWithChars: number;
+  positions: Array<{
+    positionId: string;
+    name: string;
+    quantity: string;
+    quantityValue: number | null;
+    quantityUnit: string;
+    quantitySource: string;
+    characteristicsCount: number;
+  }>;
+} {
+  const blockParsed = TenderAnalysisStructuredBlockSchema.safeParse(structuredBlock);
+  if (!blockParsed.success) {
+    return {
+      schemaOk: false,
+      nGoods: 0,
+      nServices: 0,
+      charRowsTotal: 0,
+      goodsWithChars: 0,
+      positions: []
+    };
+  }
+  const { procurementKind, goodsItems, servicesOfferings } = blockParsed.data;
+  const charRowsTotal = goodsItems.reduce((acc, g) => acc + g.characteristics.length, 0);
+  const goodsWithChars = goodsItems.filter((g) => g.characteristics.length > 0).length;
+  return {
+    schemaOk: true,
+    procurementKind,
+    nGoods: goodsItems.length,
+    nServices: servicesOfferings.length,
+    charRowsTotal,
+    goodsWithChars,
+    positions: goodsItems.map((g) => ({
+      positionId: g.positionId,
+      name: g.name,
+      quantity: g.quantity,
+      quantityValue: g.quantityValue ?? null,
+      quantityUnit: (g.quantityUnit || "").trim(),
+      quantitySource: g.quantitySource ?? "unknown",
+      characteristicsCount: g.characteristics.length
+    }))
+  };
+}
+
 export async function rebuildChecklistForTender(tenderId: string, companyId: string) {
   const docs = await prisma.companyDocument.findMany({
     where: { companyId, status: "active" },

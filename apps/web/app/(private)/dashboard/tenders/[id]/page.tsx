@@ -1,3 +1,4 @@
+import { loadGoodsExtractionCheckForTender } from "@/lib/tender/load-goods-extraction-check-ui";
 import TenderDetailClient from "./ui";
 
 export default async function TenderDetailPage({
@@ -6,5 +7,6 @@ export default async function TenderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <TenderDetailClient id={id} />;
+  const goodsExtractionCheck = await loadGoodsExtractionCheckForTender(id);
+  return <TenderDetailClient id={id} goodsExtractionCheck={goodsExtractionCheck} />;
 }

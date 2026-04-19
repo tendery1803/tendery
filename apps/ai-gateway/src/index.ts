@@ -6,6 +6,8 @@ import OpenAI, {
   APIConnectionTimeoutError,
   APIError
 } from "openai";
+import type { ChatCompletion } from "openai/resources/chat/completions";
+import type { Response as OpenAIResponse } from "openai/resources/responses/responses";
 import pino from "pino";
 import { TENDER_ANALYZE_RESPONSE_JSON_SCHEMA } from "./tender-analyze-schema.js";
 import {
@@ -13,6 +15,16 @@ import {
   rebuildOutputTextFromMessages
 } from "./analyze-response-diagnostics.js";
 import { redactDiagnosticPreview, redactSecrets } from "./pii-redact.js";
+import { extractJson } from "./utils/extract-json.js";
+import {
+  CLOUDRU_FM_HTTP_TIMEOUT_MS,
+  CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT,
+  cloudRuFmBaseUrl,
+  cloudRuFmPingOk,
+  createCloudRuFmOpenAIClient,
+  isCloudRuFmEnvConfigured,
+  serializeUpstreamError
+} from "./cloudru-fm-client.js";
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? "info",
@@ -96,6 +108,171 @@ const openai = openaiApiKey
     })
   : null;
 
+function cloudRuOpenAiFallbackEnabled(): boolean {
+  const a = process.env.AI_GATEWAY_CLOUDRU_FALLBACK_OPENAI?.trim().toLowerCase();
+  const b = process.env.AI_CLOUDRU_FALLBACK_OPENAI?.trim().toLowerCase();
+  return a === "1" || a === "true" || b === "1" || b === "true";
+}
+
+function cloudRuTransportMaxAttempts(): number {
+  const raw = process.env.AI_GATEWAY_CLOUDRU_TRANSPORT_RETRIES?.trim();
+  const n = raw == null || raw === "" ? 3 : Number(raw);
+  if (!Number.isFinite(n)) return 3;
+  return Math.min(5, Math.max(1, Math.floor(n)));
+}
+
+function isCloudRuTransportRetriable(err: unknown): boolean {
+  if (err instanceof APIConnectionTimeoutError || err instanceof APIConnectionError) return true;
+  if (err instanceof APIError) {
+    const s = err.status;
+    if (s === 408 || s === 429) return true;
+    if (s != null && s >= 500 && s <= 599) return true;
+  }
+  return false;
+}
+
+/** Повтор при нестабильном транспорте / 5xx у Cloud.ru FM (отдельно от retry «верни JSON»). */
+async function cloudRuChatCompletionsWithTransportRetries(
+  fmClient: OpenAI,
+  args: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+): Promise<ChatCompletion> {
+  const maxAttempts = cloudRuTransportMaxAttempts();
+  const delaysMs = [0, 900, 2200, 4000, 6500];
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    const wait = delaysMs[i] ?? 3000 * (i + 1);
+    if (wait > 0) await new Promise<void>((r) => setTimeout(r, wait));
+    try {
+      const chat = await fmClient.chat.completions.create({ ...args, stream: false });
+      if (i > 0) {
+        logger.info(
+          { event: "cloudru_transport_retry_ok", attempt: i + 1, maxAttempts },
+          "cloudru_transport_retry_ok"
+        );
+      }
+      return chat;
+    } catch (e) {
+      lastErr = e;
+      if (!isCloudRuTransportRetriable(e) || i === maxAttempts - 1) throw e;
+      logger.warn(
+        {
+          event: "cloudru_transport_retry",
+          attempt: i + 1,
+          maxAttempts,
+          ...serializeUpstreamError(e),
+          message: safeClientMessage(e)
+        },
+        "cloudru_transport_retry"
+      );
+    }
+  }
+  throw lastErr;
+}
+
+type AnalyzeBody = z.infer<typeof AnalyzeRequest>;
+
+async function executeOpenAiResponses(
+  client: OpenAI,
+  body: AnalyzeBody
+): Promise<{
+  model: string;
+  outputText: string;
+  usage: unknown | null;
+  completion: OpenAIResponse | null;
+}> {
+  const model = routeModel(body.modelRoute);
+  logger.info(
+    {
+      event: "openai_call_start",
+      operation: body.operation,
+      modelRoute: body.modelRoute,
+      model,
+      openaiTimeoutMs: OPENAI_HTTP_TIMEOUT_MS
+    },
+    "openai_call_start"
+  );
+
+  const completion = await client.responses.create({
+    model,
+    input: body.prompt,
+    max_output_tokens: body.maxOutputTokens,
+    ...(body.operation === "tender_analyze"
+      ? {
+          text: {
+            format: {
+              type: "json_schema",
+              name: "tender_analysis",
+              strict: true,
+              schema: structuredClone(TENDER_ANALYZE_RESPONSE_JSON_SCHEMA) as Record<string, unknown>
+            }
+          }
+        }
+      : {})
+  });
+
+  let outputText = completion.output_text ?? "";
+  if (body.operation === "tender_analyze") {
+    const rebuilt = rebuildOutputTextFromMessages(completion);
+    if (!outputText.length && rebuilt.length) {
+      logger.warn(
+        { event: "tender_analyze_output_text_empty_used_rebuild", model },
+        "completion.output_text пустой, взят текст из message.output_text вручную"
+      );
+      outputText = rebuilt;
+    }
+    const diagBase = buildTenderAnalyzeResponseDiag(completion, outputText);
+    logger.info(
+      {
+        event: "tender_analyze_openai_shape",
+        model,
+        operation: body.operation,
+        ...diagBase,
+        ...(tenderAnalyzeDeepDiagEnabled()
+          ? { outputPreview: redactDiagnosticPreview(outputText.slice(0, 2000)) }
+          : {})
+      },
+      "tender_analyze_openai_shape"
+    );
+    if (!diagBase.rebuiltMatchesSdk && (outputText.length || rebuilt.length)) {
+      logger.warn(
+        {
+          event: "tender_analyze_output_text_sdk_mismatch",
+          model,
+          sdkLen: diagBase.sdkOutputTextLen,
+          rebuiltLen: rebuilt.length
+        },
+        "расхождение output_text SDK и ручной сборки message.content"
+      );
+    }
+  }
+  const usage = completion.usage ?? null;
+  return { model, outputText, usage, completion };
+}
+
+logger.info(
+  {
+    event: "ai_gateway_startup_deps",
+    cloudru: {
+      configured: isCloudRuFmEnvConfigured(),
+      secretSet: Boolean(process.env.CLOUDRU_FM_KEY_SECRET?.trim()),
+      modelSet: Boolean(process.env.CLOUDRU_FM_MODEL?.trim()),
+      modelPreview: process.env.CLOUDRU_FM_MODEL?.trim()
+        ? String(process.env.CLOUDRU_FM_MODEL).trim().slice(0, 48)
+        : null,
+      timeoutMs: CLOUDRU_FM_HTTP_TIMEOUT_MS,
+      baseURL: cloudRuFmBaseUrl(),
+      transportRetries: cloudRuTransportMaxAttempts(),
+      httpsProxyForOutbound: Boolean(openAiHttpAgent)
+    },
+    openai: {
+      configured: Boolean(openaiApiKey?.trim()),
+      timeoutMs: OPENAI_HTTP_TIMEOUT_MS
+    },
+    cloudruOpenAiFallback: cloudRuOpenAiFallbackEnabled()
+  },
+  "ai_gateway_startup_deps"
+);
+
 const AnalyzeRequest = z.object({
   operation: z.enum(["tender_analyze", "draft_generate"]),
   sensitivity: z.enum(["no_pii", "maybe_pii", "corp_sensitive", "too_much_pii"]),
@@ -129,6 +306,10 @@ function routeModel(modelRoute: "nano" | "mini" | "escalate") {
   }
 }
 
+function aiProviderIsCloudRu(): boolean {
+  return process.env.AI_PROVIDER?.trim().toLowerCase() === "cloudru";
+}
+
 function safeClientMessage(err: unknown, maxLen = 900): string {
   const base = err instanceof Error ? err.message : String(err);
   return redactSecrets(base).slice(0, maxLen);
@@ -145,7 +326,113 @@ function tenderAnalyzeDeepDiagEnabled(): boolean {
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && req.url === "/health") {
-      return json(res, 200, { ok: true });
+      return json(res, 200, {
+        ok: true,
+        cloudru: {
+          configured: isCloudRuFmEnvConfigured(),
+          secretSet: Boolean(process.env.CLOUDRU_FM_KEY_SECRET?.trim()),
+          modelSet: Boolean(process.env.CLOUDRU_FM_MODEL?.trim()),
+          model: process.env.CLOUDRU_FM_MODEL?.trim() ?? null,
+          timeoutMs: CLOUDRU_FM_HTTP_TIMEOUT_MS,
+          baseURL: cloudRuFmBaseUrl(),
+          transportRetries: cloudRuTransportMaxAttempts(),
+          fallbackOpenAiEnabled: cloudRuOpenAiFallbackEnabled(),
+          liveCompletionTest:
+            "GET /test/cloudru-fm with Authorization: Bearer <AI_GATEWAY_API_KEY> (короткий chat completion)"
+        },
+        openai: { configured: Boolean(openaiApiKey?.trim()), timeoutMs: OPENAI_HTTP_TIMEOUT_MS }
+      });
+    }
+
+    /**
+     * Локальная проверка Cloud.ru Foundation Models (Qwen и др.) — не часть /v1/analyze.
+     * Тот же Bearer AI_GATEWAY_API_KEY, что и для основного API шлюза.
+     */
+    const pathOnly = req.url?.split("?")[0] ?? "";
+    if (req.method === "GET" && pathOnly === "/test/cloudru-fm") {
+      const auth = req.headers.authorization;
+      if (!auth?.startsWith("Bearer ") || auth.slice("Bearer ".length) !== apiKey) {
+        return unauthorized(res);
+      }
+      if (!isCloudRuFmEnvConfigured()) {
+        return json(res, 503, {
+          error: "cloudru_fm_not_configured",
+          message:
+            "Задайте CLOUDRU_FM_KEY_SECRET и CLOUDRU_FM_MODEL (см. docs/env или .env)."
+        });
+      }
+      const model = process.env.CLOUDRU_FM_MODEL!.trim();
+      const fmClient = createCloudRuFmOpenAIClient({ httpAgent: openAiHttpAgent });
+      if (!fmClient) {
+        return json(res, 503, { error: "cloudru_fm_client_unavailable" });
+      }
+      logger.info(
+        {
+          event: "cloudru_fm_test_start",
+          model,
+          ...(process.env.CLOUDRU_FM_KEY_ID?.trim()
+            ? { keyIdPrefix: process.env.CLOUDRU_FM_KEY_ID.trim().slice(0, 8) }
+            : {})
+        },
+        "cloudru_fm_test_start"
+      );
+      logger.info(
+        {
+          event: "cloudru_fm_test_outgoing",
+          baseURL: cloudRuFmBaseUrl(),
+          model,
+          max_tokens: CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT.max_tokens,
+          temperature: CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT.temperature,
+          presence_penalty: CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT.presence_penalty,
+          top_p: CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT.top_p,
+          messages: [
+            {
+              role: "user",
+              contentPreview:
+                CLOUDRU_FM_OFFICIAL_QUICKSTART_CHAT.userContent.slice(0, 80)
+            }
+          ]
+        },
+        "cloudru_fm_test_outgoing"
+      );
+      const result = await cloudRuFmPingOk(fmClient, model);
+      const envProbe = {
+        secretSet: Boolean(process.env.CLOUDRU_FM_KEY_SECRET?.trim()),
+        modelSet: Boolean(process.env.CLOUDRU_FM_MODEL?.trim()),
+        timeoutMs: CLOUDRU_FM_HTTP_TIMEOUT_MS,
+        baseURL: cloudRuFmBaseUrl(),
+        transportRetries: cloudRuTransportMaxAttempts()
+      };
+      logger.info(
+        { event: "cloudru_fm_test_diag", diagnostic: result.diagnostic, ok: result.ok, envProbe },
+        "cloudru_fm_test_diag"
+      );
+      if (!result.ok) {
+        logger.warn(
+          {
+            event: "cloudru_fm_test_fail",
+            reason: result.reason,
+            detail: result.detail,
+            upstreamStatus: result.upstreamStatus,
+            upstreamErrorSnippet: result.upstreamErrorSnippet,
+            diagnostic: result.diagnostic,
+            envProbe
+          },
+          "cloudru_fm_test_fail"
+        );
+        return json(res, 502, { ...result, envProbe });
+      }
+      logger.info(
+        {
+          event: "cloudru_fm_test_ok",
+          model,
+          elapsedMs: result.elapsedMs,
+          replyPreview: result.reply.slice(0, 80),
+          envProbe
+        },
+        "cloudru_fm_test_ok"
+      );
+      return json(res, 200, { ...result, envProbe });
     }
 
     if (req.method !== "POST" || req.url !== "/v1/analyze") {
@@ -178,85 +465,223 @@ const server = http.createServer(async (req, res) => {
       return json(res, 422, { error: "rejected", reason: "too_much_pii" });
     }
 
-    if (!openai) {
-      return json(res, 503, { error: "openai_not_configured" });
-    }
+    const wantCloudRu = aiProviderIsCloudRu();
 
-    const model = routeModel(body.modelRoute);
-    const startedAt = Date.now();
+    // По умолчанию при AI_PROVIDER=cloudru OpenAI не используется.
+    // Fallback: AI_GATEWAY_CLOUDRU_FALLBACK_OPENAI=1 (или AI_CLOUDRU_FALLBACK_OPENAI=1) и задан OPENAI_API_KEY.
 
     logger.info(
       {
-        event: "openai_call_start",
-        operation: body.operation,
-        modelRoute: body.modelRoute,
-        model,
-        openaiTimeoutMs: OPENAI_HTTP_TIMEOUT_MS
+        event: "ai_provider_check",
+        provider: process.env.AI_PROVIDER,
+        cloudruConfigured: isCloudRuFmEnvConfigured(),
+        cloudruTimeoutMs: CLOUDRU_FM_HTTP_TIMEOUT_MS,
+        cloudruTransportRetries: cloudRuTransportMaxAttempts(),
+        cloudruOpenAiFallback: cloudRuOpenAiFallbackEnabled(),
+        hasOpenAI: Boolean(openai)
       },
-      "openai_call_start"
+      "ai_provider_check"
     );
 
-    /**
-     * Разбор закупки: strict JSON Schema (Structured Outputs), см. tender-analyze-schema.ts.
-     * Не json_object — чтобы форма совпадала с контрактом web и реже обрывалась «почти JSON».
-     */
-    const completion = await openai.responses.create({
-      model,
-      input: body.prompt,
-      max_output_tokens: body.maxOutputTokens,
-      ...(body.operation === "tender_analyze"
-        ? {
-            text: {
-              format: {
-                type: "json_schema",
-                name: "tender_analysis",
-                strict: true,
-                schema: structuredClone(
-                  TENDER_ANALYZE_RESPONSE_JSON_SCHEMA
-                ) as Record<string, unknown>
-              }
-            }
-          }
-        : {})
-    });
+    if (!wantCloudRu && !openai) {
+      return json(res, 503, { error: "openai_not_configured" });
+    }
+    if (wantCloudRu && !isCloudRuFmEnvConfigured()) {
+      return json(res, 503, { error: "cloudru_not_configured" });
+    }
 
-    let outputText = completion.output_text ?? "";
-    if (body.operation === "tender_analyze") {
-      const rebuilt = rebuildOutputTextFromMessages(completion);
-      if (!outputText.length && rebuilt.length) {
-        logger.warn(
-          { event: "tender_analyze_output_text_empty_used_rebuild", model },
-          "completion.output_text пустой, взят текст из message.output_text вручную"
-        );
-        outputText = rebuilt;
+    const startedAt = Date.now();
+    let model = "";
+    let outputText = "";
+    let usage: unknown | null = null;
+    let completion: OpenAIResponse | null = null;
+    let usedCloudRu = false;
+
+    if (wantCloudRu) {
+      const fmClient = createCloudRuFmOpenAIClient({ httpAgent: openAiHttpAgent });
+      if (!fmClient) {
+        logger.error({ event: "cloudru_client_null" }, "cloudru_client_null");
+        return json(res, 502, {
+          error: "cloudru_failed",
+          detail: "Cloud.ru request failed"
+        });
       }
-      const diagBase = buildTenderAnalyzeResponseDiag(completion, outputText);
-      logger.info(
-        {
-          event: "tender_analyze_openai_shape",
-          model,
-          operation: body.operation,
-          ...diagBase,
-          ...(tenderAnalyzeDeepDiagEnabled()
-            ? { outputPreview: redactDiagnosticPreview(outputText.slice(0, 2000)) }
-            : {})
-        },
-        "tender_analyze_openai_shape"
-      );
-      if (!diagBase.rebuiltMatchesSdk && (outputText.length || rebuilt.length)) {
-        logger.warn(
+      let jsonRetryAfterInvalidJson = false;
+      let cloudPathResolved = false;
+      try {
+        model = process.env.CLOUDRU_FM_MODEL!.trim();
+        logger.info(
           {
-            event: "tender_analyze_output_text_sdk_mismatch",
+            event: "cloudru_call_start",
+            operation: body.operation,
+            modelRoute: body.modelRoute,
             model,
-            sdkLen: diagBase.sdkOutputTextLen,
-            rebuiltLen: rebuilt.length
+            maxOutputTokens: body.maxOutputTokens,
+            cloudruTimeoutMs: CLOUDRU_FM_HTTP_TIMEOUT_MS,
+            transportRetries: cloudRuTransportMaxAttempts()
           },
-          "расхождение output_text SDK и ручной сборки message.content"
+          "cloudru_call_start"
         );
+
+        // Cloud.ru (Qwen) не гарантирует строгий JSON.
+        // 1) extractJson  2) один retry с жёстким промптом  3) иначе ошибка
+        // Транспортные сбои / 5xx — cloudRuChatCompletionsWithTransportRetries (отдельно от JSON-retry).
+
+        let chat: Awaited<ReturnType<typeof fmClient.chat.completions.create>>;
+        try {
+          chat = await cloudRuChatCompletionsWithTransportRetries(fmClient, {
+            model,
+            messages: [{ role: "user", content: body.prompt }],
+            max_tokens: body.maxOutputTokens
+          });
+          const rawText = (chat.choices[0]?.message?.content ?? "").trim();
+          const extracted = extractJson(rawText);
+          if (!extracted) {
+            throw new Error("invalid_json_from_cloudru");
+          }
+          outputText = extracted;
+        } catch (innerErr) {
+          const im = innerErr instanceof Error ? innerErr.message : String(innerErr);
+          if (!im.includes("invalid_json_from_cloudru")) {
+            throw innerErr;
+          }
+          jsonRetryAfterInvalidJson = true;
+          logger.warn(
+            {
+              event: "cloudru_json_retry_prompt",
+              model,
+              maxOutputTokens: body.maxOutputTokens
+            },
+            "cloudru_json_retry_prompt"
+          );
+          chat = await cloudRuChatCompletionsWithTransportRetries(fmClient, {
+            model,
+            messages: [
+              {
+                role: "user",
+                content:
+                  body.prompt +
+                  "\n\nВерни ТОЛЬКО JSON. Без текста, без пояснений."
+              }
+            ],
+            max_tokens: body.maxOutputTokens
+          });
+          const rawTextRetry = (chat.choices[0]?.message?.content ?? "").trim();
+          const extractedRetry = extractJson(rawTextRetry);
+          if (!extractedRetry) {
+            throw new Error("invalid_json_from_cloudru");
+          }
+          outputText = extractedRetry;
+        }
+
+        usage = chat.usage
+          ? {
+              input_tokens: chat.usage.prompt_tokens,
+              output_tokens: chat.usage.completion_tokens,
+              total_tokens: chat.usage.total_tokens
+            }
+          : null;
+        usedCloudRu = true;
+        cloudPathResolved = true;
+        if (body.operation === "tender_analyze") {
+          logger.info(
+            {
+              event: "tender_analyze_cloudru_shape",
+              model,
+              outputLen: outputText.length,
+              startsWithBrace: outputText.trimStart().startsWith("{"),
+              markdownFence: /```/.test(outputText)
+            },
+            "tender_analyze_cloudru_shape"
+          );
+        }
+      } catch (cloudErr) {
+        const elapsedMsCloud = Date.now() - startedAt;
+        const up = serializeUpstreamError(cloudErr);
+        logger.error(
+          {
+            event: "cloudru_failed",
+            elapsedMs: elapsedMsCloud,
+            jsonRetryAfterInvalidJson,
+            transportRetries: cloudRuTransportMaxAttempts(),
+            ...up,
+            message: safeClientMessage(cloudErr),
+            errName: cloudErr instanceof Error ? cloudErr.name : typeof cloudErr,
+            code: cloudErr instanceof APIError ? cloudErr.code : undefined,
+            requestId: cloudErr instanceof APIError ? cloudErr.request_id : undefined
+          },
+          "cloudru_failed"
+        );
+
+        if (cloudRuOpenAiFallbackEnabled() && openai) {
+          logger.warn(
+            {
+              event: "cloudru_openai_fallback_start",
+              elapsedMs: elapsedMsCloud,
+              jsonRetryAfterInvalidJson
+            },
+            "cloudru_openai_fallback_start"
+          );
+          try {
+            const r = await executeOpenAiResponses(openai, body);
+            model = r.model;
+            outputText = r.outputText;
+            usage = r.usage;
+            completion = r.completion;
+            usedCloudRu = false;
+            cloudPathResolved = true;
+            logger.info(
+              {
+                event: "cloudru_openai_fallback_ok",
+                model: r.model,
+                elapsedMs: Date.now() - startedAt
+              },
+              "cloudru_openai_fallback_ok"
+            );
+          } catch (fbErr) {
+            logger.error(
+              {
+                event: "cloudru_openai_fallback_fail",
+                ...serializeUpstreamError(fbErr),
+                message: safeClientMessage(fbErr)
+              },
+              "cloudru_openai_fallback_fail"
+            );
+            return json(res, 502, {
+              error: "cloudru_failed",
+              detail: safeClientMessage(cloudErr),
+              fallbackOpenAiFailed: true,
+              fallbackDetail: safeClientMessage(fbErr),
+              elapsedMs: Date.now() - startedAt,
+              jsonRetryAfterInvalidJson,
+              ...up
+            });
+          }
+        }
+
+        if (!cloudPathResolved) {
+          return json(res, 502, {
+            error: "cloudru_failed",
+            detail: safeClientMessage(cloudErr),
+            elapsedMs: elapsedMsCloud,
+            jsonRetryAfterInvalidJson,
+            ...up
+          });
+        }
       }
+    } else {
+      if (!openai) {
+        return json(res, 503, { error: "openai_not_configured" });
+      }
+      const r = await executeOpenAiResponses(openai, body);
+      model = r.model;
+      outputText = r.outputText;
+      usage = r.usage;
+      completion = r.completion;
     }
 
     const elapsedMs = Date.now() - startedAt;
+    const openaiAfterCloudRuFallback = wantCloudRu && !usedCloudRu;
     logger.info(
       {
         operation: body.operation,
@@ -264,8 +689,15 @@ const server = http.createServer(async (req, res) => {
         modelRoute: body.modelRoute,
         model,
         elapsedMs,
-        outputTokens: completion.usage?.output_tokens,
-        inputTokens: completion.usage?.input_tokens
+        outputTokens: usedCloudRu
+          ? (usage as { output_tokens?: number } | null)?.output_tokens
+          : completion?.usage?.output_tokens,
+        inputTokens: usedCloudRu
+          ? (usage as { input_tokens?: number } | null)?.input_tokens
+          : completion?.usage?.input_tokens,
+        aiProvider: usedCloudRu ? "cloudru" : "openai",
+        usedCloudRu,
+        openaiAfterCloudRuFallback
       },
       "ai_call"
     );
@@ -273,9 +705,13 @@ const server = http.createServer(async (req, res) => {
     const responseBody: Record<string, unknown> = {
       model,
       outputText,
-      usage: completion.usage ?? null
+      usage
     };
-    if (body.operation === "tender_analyze" && tenderAnalyzeDeepDiagEnabled()) {
+    if (
+      body.operation === "tender_analyze" &&
+      tenderAnalyzeDeepDiagEnabled() &&
+      completion
+    ) {
       responseBody.analyzeDiagnostics = {
         ...buildTenderAnalyzeResponseDiag(completion, outputText),
         outputPreview: redactDiagnosticPreview(outputText.slice(0, 2000)),

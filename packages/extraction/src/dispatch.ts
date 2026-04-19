@@ -27,6 +27,9 @@ export async function dispatchByFormat(
       return extractImage(buffer, config.ocrEnabled);
     case "zip":
       return { kind: "error", message: "zip_should_use_extractZip" };
+    case "rar":
+    case "7z":
+      return { kind: "error", message: "seven_archive_should_use_extractSevenFamilyArchive" };
     case "unknown":
       return { kind: "skipped", reason: "unsupported_format" };
     default: {

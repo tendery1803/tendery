@@ -30,8 +30,10 @@ export default function DashboardLayout({
             <NavLink href="/dashboard">Обзор</NavLink>
             <NavLink href="/dashboard/documents">Документы</NavLink>
             <NavLink href="/dashboard/tenders">Закупки</NavLink>
+            <NavLink href="/dashboard/tenders/quality">Проверка позиций</NavLink>
             <NavLink href="/dashboard/billing">Тариф</NavLink>
             <NavLink href="/dashboard/help">Справка</NavLink>
+            <NavLink href="/dashboard/debug/goods-extraction">Отладка goods</NavLink>
           </nav>
         </div>
       </header>

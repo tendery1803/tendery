@@ -1,5 +1,5 @@
-import type { TenderAiGoodItem } from "@tendery/contracts";
-import { appendDebugLog } from "@/lib/debug-logger";
+import type { GoodsQuantitySource, TenderAiGoodItem } from "@tendery/contracts";
+import { formatQuantityValueForStorage } from "@/lib/ai/extract-goods-from-tech-spec";
 
 function normKeyPart(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
@@ -100,6 +100,14 @@ function preferMergeQuantity(base: string, incoming: string): string {
   return b;
 }
 
+function quantityStringLooksUnitOnly(s: string): boolean {
+  const t = s.trim();
+  if (!t || /\d/.test(t)) return false;
+  return /^(?:шт\.?|штук(?:и|а|ой)?|ед\.?\s*изм\.?|комплект(?:а|ов)?|компл\.?|упак(?:овк\w*)?)$/i.test(
+    t
+  );
+}
+
 function isChipRelatedCharKey(normName: string): boolean {
   return /чип|наличие\s*чип/.test(normName);
 }
@@ -164,27 +172,64 @@ function mergeOneItem(
   const preservePrimaryCoreFields = options?.preservePrimaryCoreFields === true;
   const bq = base.quantity ?? "";
   const iq = incoming.quantity ?? "";
-  const qMerged =
-    preservePrimaryCoreFields && bq.trim()
-      ? bq
-      : preferMergeQuantity(bq, iq);
-  // #region agent log
-  if (bq.trim() && iq.trim() && bq.trim() !== iq.trim()) {
-    const payload = {
-      location: "goods-items-merge.ts:mergeOneItem",
-      message: "quantity_merge_conflict",
-      data: { baseQty: bq.slice(0, 32), incomingQty: iq.slice(0, 32), merged: qMerged.slice(0, 32) },
-      hypothesisId: "C",
-      timestamp: Date.now()
-    };
-    fetch("http://127.0.0.1:7684/ingest/4fdbeace-af80-41b7-ba60-fe62d0bf9aba", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7d64fb" },
-      body: JSON.stringify({ sessionId: "7d64fb", ...payload })
-    }).catch(() => {});
-    appendDebugLog(payload);
+  const baseTech = base.quantitySource === "tech_spec" && base.quantityValue != null;
+  const incTech = incoming.quantitySource === "tech_spec" && incoming.quantityValue != null;
+
+  let qMerged: string;
+  let quantityValueOut: number | undefined;
+  let quantityUnitOut: string;
+  let quantitySourceOut: GoodsQuantitySource;
+
+  if (baseTech && incTech) {
+    qMerged = bq.trim() || formatQuantityValueForStorage(base.quantityValue!);
+    quantityValueOut = base.quantityValue ?? undefined;
+    quantityUnitOut = ((base.quantityUnit || "").trim() || (base.unit || "").trim()).trim();
+    quantitySourceOut = "tech_spec";
+  } else if (baseTech) {
+    qMerged = bq.trim() || formatQuantityValueForStorage(base.quantityValue!);
+    quantityValueOut = base.quantityValue ?? undefined;
+    quantityUnitOut = ((base.quantityUnit || "").trim() || (base.unit || "").trim()).trim();
+    quantitySourceOut = "tech_spec";
+  } else if (incTech) {
+    qMerged = iq.trim() || formatQuantityValueForStorage(incoming.quantityValue!);
+    quantityValueOut = incoming.quantityValue ?? undefined;
+    quantityUnitOut = ((incoming.quantityUnit || "").trim() || (incoming.unit || "").trim()).trim();
+    quantitySourceOut = "tech_spec";
+  } else {
+    if (bq.trim() && /\d/.test(bq) && quantityStringLooksUnitOnly(iq)) {
+      qMerged = bq;
+    } else {
+      qMerged =
+        preservePrimaryCoreFields && bq.trim() ? bq : preferMergeQuantity(bq, iq);
+    }
+    quantityValueOut =
+      base.quantityValue != null
+        ? base.quantityValue
+        : incoming.quantityValue != null
+          ? incoming.quantityValue
+          : undefined;
+    quantityUnitOut = ((base.quantityUnit || "").trim() || (incoming.quantityUnit || "").trim()).trim();
+    const bs = (base.quantitySource ?? "unknown") as GoodsQuantitySource;
+    const ins = (incoming.quantitySource ?? "unknown") as GoodsQuantitySource;
+    quantitySourceOut = bs !== "unknown" ? bs : ins !== "unknown" ? ins : "unknown";
   }
-  // #endregion
+
+  const unitOut = (() => {
+    if (baseTech && incTech) {
+      const u = ((base.quantityUnit || "").trim() || (base.unit || "").trim()).trim();
+      return u || preferLongerText(base.unit ?? "", incoming.unit ?? "");
+    }
+    if (baseTech) {
+      const u = ((base.quantityUnit || "").trim() || (base.unit || "").trim()).trim();
+      return u || preferLongerText(base.unit ?? "", incoming.unit ?? "");
+    }
+    if (incTech) {
+      const u = ((incoming.quantityUnit || "").trim() || (incoming.unit || "").trim()).trim();
+      return u || preferLongerText(base.unit ?? "", incoming.unit ?? "");
+    }
+    return preferLongerText(base.unit ?? "", incoming.unit ?? "");
+  })();
+
   return {
     name:
       preservePrimaryCoreFields && (base.name ?? "").trim()
@@ -195,12 +240,15 @@ function mergeOneItem(
         ? base.positionId
         : preferLongerText(base.positionId ?? "", incoming.positionId ?? ""),
     codes: preferLongerText(base.codes ?? "", incoming.codes ?? ""),
-    unit: preferLongerText(base.unit ?? "", incoming.unit ?? ""),
+    unit: unitOut,
     quantity: qMerged,
     unitPrice: preferLongerText(base.unitPrice ?? "", incoming.unitPrice ?? ""),
     lineTotal: preferLongerText(base.lineTotal ?? "", incoming.lineTotal ?? ""),
     sourceHint: preferLongerText(base.sourceHint ?? "", incoming.sourceHint ?? ""),
-    characteristics: mergeCharacteristics(base.characteristics ?? [], incoming.characteristics ?? [])
+    characteristics: mergeCharacteristics(base.characteristics ?? [], incoming.characteristics ?? []),
+    quantityUnit: quantityUnitOut,
+    quantitySource: quantitySourceOut,
+    ...(quantityValueOut != null ? { quantityValue: quantityValueOut } : {})
   };
 }
 

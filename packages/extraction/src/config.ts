@@ -24,6 +24,10 @@ export function getExtractionConfigFromEnv(): ExtractionConfig {
     zipMaxDepth: intEnv("EXTRACT_ZIP_MAX_DEPTH", 4),
     zipMaxNestLevel: intEnv("EXTRACT_ZIP_MAX_NEST_LEVEL", 3),
     zipMaxEntryBytes: intEnv("EXTRACT_ZIP_MAX_ENTRY_BYTES", 25 * 1024 * 1024),
+    archiveMaxTotalMembers: intEnv("EXTRACT_ARCHIVE_MAX_TOTAL_MEMBERS", 2000),
+    archiveDiagnosticsEnabled: boolEnv("EXTRACT_ARCHIVE_DIAGNOSTICS", true),
+    archiveDiagnosticsMaxPaths: intEnv("EXTRACT_ARCHIVE_DIAGNOSTICS_MAX_PATHS", 2000),
+    archiveDiagnosticsMaxEvents: intEnv("EXTRACT_ARCHIVE_DIAGNOSTICS_MAX_EVENTS", 500),
     ocrEnabled: boolEnv("EXTRACT_OCR_ENABLED", false)
   };
 }

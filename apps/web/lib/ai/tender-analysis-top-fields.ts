@@ -82,7 +82,15 @@ export type TenderAnalysisFieldRow = {
   id?: string;
 };
 
-function pickBetterField(a: { valueText: string; confidence: number }, b: typeof a): typeof a {
+type TopFieldInputRow = {
+  id: string;
+  fieldKey: string;
+  fieldLabel: string;
+  valueText: string;
+  confidence: number;
+};
+
+function pickBetterField(a: TopFieldInputRow, b: TopFieldInputRow): TopFieldInputRow {
   const av = a.valueText.trim().length;
   const bv = b.valueText.trim().length;
   if (bv > av) return b;
@@ -93,19 +101,8 @@ function pickBetterField(a: { valueText: string; confidence: number }, b: typeof
 /**
  * 15 фиксированных строк по канону + в конце — любые поля с неизвестными key (без дублей с каноном).
  */
-export function buildTenderAnalysisTopFieldRows(
-  fields: Array<{
-    id: string;
-    fieldKey: string;
-    fieldLabel: string;
-    valueText: string;
-    confidence: number;
-  }>
-): TenderAnalysisFieldRow[] {
-  const byCanon = new Map<
-    string,
-    { id: string; fieldKey: string; fieldLabel: string; valueText: string; confidence: number }
-  >();
+export function buildTenderAnalysisTopFieldRows(fields: TopFieldInputRow[]): TenderAnalysisFieldRow[] {
+  const byCanon = new Map<string, TopFieldInputRow>();
 
   for (const f of fields) {
     const canon = canonicalTenderAnalysisFieldKey(f.fieldKey);

@@ -65,4 +65,16 @@ const nonStandard = runSanitize([
 ]);
 assert.ok(nonStandard.some((c) => /класс энергоэффективности/i.test(c.name)));
 
+/** 4) OCR-артефакт «30–500 С» (потерян ° у 50) — нормализация на пути sanitize → UI. */
+const celsiusGarble = runSanitize([
+  { name: "Температура хранения", value: "30-500 С" },
+  { name: "Температура эксплуатации", value: "от 30 до 500 С" },
+  { name: "Материал", value: "Нитрил" }
+]);
+const tempStore = celsiusGarble.find((c) => /хранен/i.test(c.name));
+const tempUse = celsiusGarble.find((c) => /эксплуатац/i.test(c.name));
+assert.equal(tempStore?.value, "30–50 °C");
+assert.equal(tempUse?.value, "от 30 до 50 °C");
+assert.ok(celsiusGarble.some((c) => c.name === "Материал"));
+
 console.log("sanitize-tender-analysis-fields.verify: OK");

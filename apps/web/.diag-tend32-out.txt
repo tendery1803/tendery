@@ -1,0 +1,21 @@
+
+node:internal/modules/run_main:128
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/home/shylugan/tendery/apps/web/lib/ai/diag-tend32-remaining.ts' imported from /home/shylugan/tendery/apps/web/
+    at finalizeResolution (node:internal/modules/esm/resolve:265:11)
+    at moduleResolve (node:internal/modules/esm/resolve:933:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1169:11)
+    at nextResolve (node:internal/modules/esm/hooks:868:28)
+    at resolveBase (file:///home/shylugan/tendery/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/esm/index.mjs?1776507210212:2:3744)
+    at async resolveDirectory (file:///home/shylugan/tendery/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/esm/index.mjs?1776507210212:2:4237)
+    at async resolve (file:///home/shylugan/tendery/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/esm/index.mjs?1776507210212:2:5355)
+    at async nextResolve (node:internal/modules/esm/hooks:868:22)
+    at async Hooks.resolve (node:internal/modules/esm/hooks:306:24)
+    at async handleMessage (node:internal/modules/esm/worker:196:18) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///home/shylugan/tendery/apps/web/lib/ai/diag-tend32-remaining.ts'
+}
+
+Node.js v20.18.2
+EXIT:1
