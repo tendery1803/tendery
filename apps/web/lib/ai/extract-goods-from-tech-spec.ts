@@ -1155,10 +1155,13 @@ export function lineLooksLikeTechSpecGoodsRow(line: string): boolean {
   if (lineHasRub(t)) return false;
   if (POSITION_START_RE.test(t) || MODEL_FIRST_LINE_RE.test(t)) return true;
   if (/(?:\d+(?:[.,]\d+)?\s*(?:шт|ед\.?\s*изм|упак|компл|комплект))/i.test(t)) return true;
+  /** Вертикальный OOZ: классификационный код часто на отдельной строке (название/qty/unit вокруг). */
+  if (/^\s*\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{3,12}(?!\d)\s*$/i.test(t)) return true;
+  if (/^\s*\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?(?!\d)\s*$/i.test(t)) return true;
   if (
     /\d{2}\.\d{2}\.\d{2}/.test(t) &&
     /\d+(?:[.,]\d+)?/.test(t) &&
-    /(?:наименован|модел|картридж|тонер|состав|характеристик|объект)/i.test(t)
+    /(?:наименован|модел|картридж|тонер|состав|характеристик|объект|кол-?\s*во|ед\.?\s*изм)/i.test(t)
   ) {
     return true;
   }
@@ -3897,39 +3900,88 @@ export function extractGoodsFromTechSpec(maskedFullCorpus: string): ExtractGoods
     }
     if (rowIndices.length === 0) return;
     const groups = clusterLineIndices(rowIndices);
-    let best = groups[0]!;
-    for (const g of groups) {
-      if (g.length > best.length) best = g;
-    }
     const seenKeys = new Set<string>();
+    const seenCodeOnlyCodeQty = new Set<string>();
     const lp = logicalPath.replace(/\s+/g, " ").trim().slice(0, 220);
-    for (const li of best) {
-      const parsed = parseTechSpecTableLine(segLines[li]!);
-      if (!parsed) continue;
-      techSpecRowsParsed.push((segLines[li] ?? "").trim().slice(0, 120));
-      const key = `${parsed.quantity}|${normalizeNameKey(parsed.name)}|${parsed.codes}`;
-      if (seenKeys.has(key)) continue;
-      seenKeys.add(key);
-      const withHint: TenderAiGoodItem = {
-        ...parsed,
-        sourceHint: lp ? `tech_spec_table_line|lp:${lp}` : "tech_spec_table_line"
-      };
-      const gk = normalizeNameKey(withHint.name) + "|" + withHint.quantity + "|" + withHint.codes;
-      if (seen.has(gk)) continue;
-      seen.add(gk);
-      items.push(withHint);
-      techSpecQuantityAttachSources.push("tech_spec_table_line");
-      if (positionSamples.length < 8) {
-        positionSamples.push({
-          positionId: withHint.positionId ?? "",
-          namePreview: (withHint.name ?? "").slice(0, 80),
-          characteristicsCount: 0,
-          logicalPath: lp,
-          quantityValue: withHint.quantityValue ?? null,
-          quantityUnit: (withHint.quantityUnit || withHint.unit || "").trim(),
-          quantityAttachedAtRow: 0,
-          quantityAttachSource: "tech_spec_table_line"
-        });
+    const isCodeOnlyAnchor = (t: string): boolean =>
+      /^\s*\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{3,12}(?!\d)\s*$/i.test(t) ||
+      /^\s*\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?(?!\d)\s*$/i.test(t);
+
+    const segmentHasVerticalQtyHeaders = (() => {
+      let hasUnit = false;
+      let hasQty = false;
+      for (const ln of segLines) {
+        const t = (ln ?? "").trim();
+        if (!t) continue;
+        if (!hasUnit && (/^ед\.?\s*изм\.?$/i.test(t) || /^единиц/i.test(t))) hasUnit = true;
+        if (!hasQty && /^(?:кол-?\s*во|количеств)/i.test(t)) hasQty = true;
+        if (hasUnit && hasQty) return true;
+      }
+      return false;
+    })();
+    const codeOnlyAnchorsInSegment = (() => {
+      let n = 0;
+      for (const ln of segLines) if (isCodeOnlyAnchor((ln ?? "").trim())) n++;
+      return n;
+    })();
+
+    for (const g of groups) {
+      for (const li of g) {
+        const single = (segLines[li] ?? "").trim();
+        let parsed = parseTechSpecTableLine(single);
+        if (!parsed) {
+          const lo = Math.max(0, li - 8);
+          const hi = Math.min(segLines.length, li + 22);
+          const windowLines = segLines.slice(lo, hi).map((s) => s.trimEnd());
+          /** Merged-окно пробуем только для code-only anchor и только в “вертикальном OOZ” с явными заголовками. */
+          if (!isCodeOnlyAnchor(single)) continue;
+          if (!segmentHasVerticalQtyHeaders) continue;
+          /**
+           * Узкий анти-false-positive: merged-режим включаем только когда в сегменте явно «вертикальная таблица»
+           * (несколько код-якорей). Иначе одиночный код в тексте/характеристиках может родить лишнюю позицию.
+           */
+          if (codeOnlyAnchorsInSegment < 4) continue;
+          const merged = windowLines.join(" ").replace(/\s+/g, " ").trim();
+          if (merged.length > single.length + 8) {
+            parsed = parseTechSpecTableLine(merged, {
+              quantitySourceLines: windowLines,
+              codeAnchorLine: single
+            });
+          }
+        }
+        if (!parsed) continue;
+        techSpecRowsParsed.push(single.slice(0, 120));
+        const codeOnlyKey =
+          isCodeOnlyAnchor(single) && parsed.codes
+            ? `code_only|${parsed.codes.replace(/\s/g, "").toLowerCase()}|${(parsed.quantity ?? "").trim()}|${(parsed.unit || parsed.quantityUnit || "").trim()}`
+            : "";
+        if (codeOnlyKey && seenCodeOnlyCodeQty.has(codeOnlyKey)) continue;
+        if (codeOnlyKey) seenCodeOnlyCodeQty.add(codeOnlyKey);
+
+        const key = `${parsed.quantity}|${normalizeNameKey(parsed.name)}|${parsed.codes}`;
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        const withHint: TenderAiGoodItem = {
+          ...parsed,
+          sourceHint: lp ? `tech_spec_table_line|lp:${lp}` : "tech_spec_table_line"
+        };
+        const gk = normalizeNameKey(withHint.name) + "|" + withHint.quantity + "|" + withHint.codes;
+        if (seen.has(gk)) continue;
+        seen.add(gk);
+        items.push(withHint);
+        techSpecQuantityAttachSources.push("tech_spec_table_line");
+        if (positionSamples.length < 8) {
+          positionSamples.push({
+            positionId: withHint.positionId ?? "",
+            namePreview: (withHint.name ?? "").slice(0, 80),
+            characteristicsCount: 0,
+            logicalPath: lp,
+            quantityValue: withHint.quantityValue ?? null,
+            quantityUnit: (withHint.quantityUnit || withHint.unit || "").trim(),
+            quantityAttachedAtRow: 0,
+            quantityAttachSource: "tech_spec_table_line"
+          });
+        }
       }
     }
   };
@@ -4211,18 +4263,83 @@ function normalizeNameKey(name: string): string {
     .trim();
 }
 
+export type ParseTechSpecTableLineOpts = {
+  /** Реальные строки окна (а не одна склеенная строка): для вертикального OOZ, где unit/qty разнесены. */
+  quantitySourceLines?: string[];
+  /** Строка-якорь позиции (часто только код): допускает парсинг merged-окна при строгих структурных гейтах. */
+  codeAnchorLine?: string;
+};
+
 /** Однострочный fallback (старая логика), если блоки не нашлись — для мелких ТЗ. */
-export function parseTechSpecTableLine(line: string): TenderAiGoodItem | null {
+export function parseTechSpecTableLine(line: string, opts?: ParseTechSpecTableLineOpts): TenderAiGoodItem | null {
   const raw = line.trim();
-  if (!lineLooksLikeTechSpecGoodsRow(raw)) return null;
+  const anchor = (opts?.codeAnchorLine ?? "").trim();
+  const anchorIsCodeOnly =
+    /^\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{3,12}(?!\d)$/i.test(anchor) ||
+    /^\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?(?!\d)$/i.test(anchor);
+
+  if (!lineLooksLikeTechSpecGoodsRow(raw)) {
+    /**
+     * Merged-окно без «N шт» в одной строке не похоже на goods row, но anchor-код надёжен.
+     * Разрешаем только когда anchor — код-строка целиком.
+     */
+    if (!anchor || !anchorIsCodeOnly) return null;
+  }
   const pos = raw.match(/^\s*(\d{1,4})\s*[\.)]\s/)?.[1] ?? "";
   let rest = raw.replace(/^\s*\d{1,4}\s*[\.)]\s+/, "");
-  const codes = extractKtruOrOkpd(rest);
+  const codeFromAnchor = anchor ? extractKtruOrOkpd(anchor) : "";
+  const codeFromRest = extractKtruOrOkpd(rest);
+  const codes = (codeFromAnchor || codeFromRest).trim();
   if (codes) rest = rest.replace(codes, " ");
-  const rq = resolveDeterministicGoodsQuantity([raw], raw, false, false);
-  if (!rq) return null;
-  const quantity = rq.quantityStr;
-  const unit = rq.unitStr;
+  const qtyLines =
+    opts?.quantitySourceLines?.length && opts.quantitySourceLines.length > 0
+      ? opts.quantitySourceLines.map((s) => s.trim())
+      : [raw];
+  const rq = resolveDeterministicGoodsQuantity(qtyLines, raw, false, false, opts?.quantitySourceLines ? true : false);
+
+  const fallbackVerticalUnitThenNumber = (): { quantity: string; unit: string; quantityValue: number | null } | null => {
+    if (!opts?.quantitySourceLines || !anchorIsCodeOnly) return null;
+    const all = opts.quantitySourceLines.map((s) => s.trim());
+    /**
+     * Заголовки «Ед. изм.» / «Кол-во» могут находиться выше локального окна вокруг кода (вертикальная таблица),
+     * поэтому гейт по заголовкам применяется на уровне сегмента (см. runFallbackClusterOnLines).
+     * Здесь — только локальная проверка unit→число рядом с якорем.
+     */
+
+    /** В окне может быть 2 кода (соседние позиции). Чтобы не «схватить» qty/ед.изм. от соседа — сканируем локально вокруг якоря. */
+    const anchorIdx = anchor ? all.findIndex((x) => x.trim() === anchor) : -1;
+    const lo = anchorIdx >= 0 ? Math.max(0, anchorIdx - 8) : 0;
+    const hi = anchorIdx >= 0 ? Math.min(all.length, anchorIdx + 14) : all.length;
+    const L = all.slice(lo, hi).map((s) => s.trim()).filter(Boolean);
+
+    for (let i = 0; i < L.length; i++) {
+      const uRaw = L[i] ?? "";
+      if (!uRaw) continue;
+      const uNorm = uRaw.replace(/\s+/g, " ").trim();
+      const unitTok = uNorm.toLowerCase().replace(/\s/g, "");
+      const unitOk = isUnitTableCell(uNorm) || /^(?:кг\.?|л\.?|шт\.?|м2|м²|г\.?|м\.?|м3)$/i.test(unitTok);
+      if (!unitOk) continue;
+      for (let j = i + 1; j <= Math.min(L.length - 1, i + 4); j++) {
+        const qRaw = (L[j] ?? "").trim();
+        if (!qRaw) continue;
+        const qCompact = qRaw.replace(/\s/g, "");
+        if (!isNumericQuantityCell(qCompact)) continue;
+        if (cellLooksLikeKtruOkpdOrRegistry(qCompact)) continue;
+        const n = parseDeterministicQuantityNumberFragment(qCompact);
+        if (n == null || n <= 0 || n > 999_999) continue;
+        const unit = uNorm.replace(/\.+$/g, "").trim();
+        return { quantity: formatQuantityValueForStorage(n), unit, quantityValue: n };
+      }
+    }
+    return null;
+  };
+
+  const rq2 = rq
+    ? { quantity: rq.quantityStr, unit: rq.unitStr, quantityValue: rq.quantityValue ?? null }
+    : fallbackVerticalUnitThenNumber();
+  if (!rq2) return null;
+  const quantity = rq2.quantity;
+  const unit = rq2.unit;
   rest = rest
     .replace(
       new RegExp(
@@ -4232,12 +4349,40 @@ export function parseTechSpecTableLine(line: string): TenderAiGoodItem | null {
       " "
     )
     .trim();
-  const name = rest.replace(/\s+/g, " ").replace(/^[\d\s.,;:|-]+/, "").trim();
+  let name = rest.replace(/\s+/g, " ").replace(/^[\d\s.,;:|-]+/, "").trim();
+  /**
+   * Вертикальный OOZ: название — строкой над кодом. В merged-строке хвост характеристик может быть «товарнее»
+   * и давать ложные name → лишние позиции. Поэтому для code-only anchor берём только строку над кодом
+   * (и не позволяем характеристику стать названием).
+   */
+  if (opts?.quantitySourceLines?.length && anchorIsCodeOnly) {
+    const lines = opts.quantitySourceLines.map((s) => s.trim());
+    const anchorIdx = lines.findIndex((x) => x.trim() === anchor);
+    if (anchorIdx > 0) {
+      for (let i = anchorIdx - 1; i >= 0; i--) {
+        const t = (lines[i] ?? "").trim();
+        if (!t) continue;
+        if (/^(?:кол-?\s*во|ед\.?\s*изм|единиц\w+\s+измерен|наименование)\b/i.test(t)) continue;
+        if (/^\d{2}\.\d{2}\.\d{2}/.test(t)) continue;
+        if (isNumericQuantityCell(t.replace(/\s/g, ""))) continue;
+        const tok = t.toLowerCase().replace(/\s/g, "");
+        if (isUnitTableCell(t) || /^(?:кг\.?|л\.?|шт\.?|м2|м²|г\.?|м\.?|м3)$/i.test(tok)) continue;
+        if (lineLooksLikeCharacteristicRow(t)) continue;
+        if (t.length >= 3) {
+          name = t.replace(/\s+/g, " ").trim();
+          break;
+        }
+      }
+    }
+  }
   if (name.length < 3) return null;
   if (/^(наименование|п\/п|ед\.?\s*изм|количество|код)\s*$/i.test(name)) return null;
+  /** Заголовки/итоги таблиц и «денежные» ячейки не должны становиться товарами. */
+  if (/(?:\bруб\b|руб\.|сумма|итого|цена\s+за\s+единиц|стоимость\s+позиции)/i.test(name)) return null;
+  if (!/[а-яёa-z]{3,}/i.test(name)) return null;
   return {
     name: name.slice(0, 800),
-    positionId: pos,
+    positionId: pos || (anchorIsCodeOnly ? codes.replace(/\s/g, "") : ""),
     codes,
     unit,
     quantity,
@@ -4245,8 +4390,8 @@ export function parseTechSpecTableLine(line: string): TenderAiGoodItem | null {
     lineTotal: "",
     sourceHint: "tech_spec_table_line",
     characteristics: [],
-    ...(rq.quantityValue != null ? { quantityValue: rq.quantityValue } : {}),
-    quantityUnit: rq.quantityUnit,
+    ...(rq2.quantityValue != null ? { quantityValue: rq2.quantityValue } : {}),
+    quantityUnit: unit,
     quantitySource: "tech_spec" as const
   };
 }
