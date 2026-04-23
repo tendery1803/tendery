@@ -3972,9 +3972,11 @@ export function extractGoodsFromTechSpec(maskedFullCorpus: string): ExtractGoods
     })();
 
     for (const g of groups) {
+      const sortedGroup = [...g].sort((a, b) => a - b);
       for (const li of g) {
         const single = (segLines[li] ?? "").trim();
         let parsed = parseTechSpecTableLine(single);
+        let ctxLines: string[] = [];
         if (!parsed) {
           const lo = Math.max(0, li - 8);
           const hi = Math.min(segLines.length, li + 22);
@@ -3993,9 +3995,17 @@ export function extractGoodsFromTechSpec(maskedFullCorpus: string): ExtractGoods
               quantitySourceLines: windowLines,
               codeAnchorLine: single
             });
+            if (parsed) ctxLines = sliceContextLinesUntilNextCodeAnchor(windowLines, single);
           }
         }
         if (!parsed) continue;
+        if (ctxLines.length === 0) {
+          const pos = sortedGroup.indexOf(li);
+          const nextStart =
+            pos >= 0 && pos < sortedGroup.length - 1 ? sortedGroup[pos + 1]! : Math.min(segLines.length, li + 36);
+          ctxLines = segLines.slice(li + 1, Math.max(li + 1, nextStart)).map((s) => s.trimEnd());
+        }
+        parsed = enrichTechSpecTableLineItemCharacteristicsFromContextLines(parsed, ctxLines);
         techSpecRowsParsed.push(single.slice(0, 120));
         const codeOnlyKey =
           isCodeOnlyAnchor(single) && parsed.codes
@@ -4020,7 +4030,7 @@ export function extractGoodsFromTechSpec(maskedFullCorpus: string): ExtractGoods
           positionSamples.push({
             positionId: withHint.positionId ?? "",
             namePreview: (withHint.name ?? "").slice(0, 80),
-            characteristicsCount: 0,
+            characteristicsCount: withHint.characteristics?.length ?? 0,
             logicalPath: lp,
             quantityValue: withHint.quantityValue ?? null,
             quantityUnit: (withHint.quantityUnit || withHint.unit || "").trim(),
@@ -4307,6 +4317,66 @@ function normalizeNameKey(name: string): string {
     .replace(/\s+/g, " ")
     .slice(0, 96)
     .trim();
+}
+
+function isTechSpecStandaloneKtruOrOkpdCodeLine(t: string): boolean {
+  const u = t.trim();
+  return (
+    /^\d{2}\.\d{2}\.\d{2}\.\d{3}-\d{3,12}(?!\d)$/i.test(u) ||
+    /^\d{2}\.\d{2}\.\d{2}\.\d{2,3}(?:\.\d{3})?(?!\d)$/i.test(u)
+  );
+}
+
+/** Строки между якорем-кодом и следующим кодом в вертикальном окне — тело одной позиции. */
+function sliceContextLinesUntilNextCodeAnchor(windowLines: string[], anchorLine: string): string[] {
+  const all = windowLines.map((s) => s.trimEnd().trim());
+  const ax = all.findIndex((x) => x === anchorLine.trim());
+  if (ax < 0) return [];
+  const after = all.slice(ax + 1);
+  let end = after.length;
+  for (let i = 0; i < after.length; i++) {
+    if (isTechSpecStandaloneKtruOrOkpdCodeLine(after[i]!)) {
+      end = i;
+      break;
+    }
+  }
+  return after.slice(0, end).slice(0, 24);
+}
+
+/**
+ * Для `parseTechSpecTableLine` позиция часто выделяется без тела блока → characteristics пустые.
+ * Поднимаем пары из соседних строк того же локального контекста (без выдумывания значений).
+ */
+function enrichTechSpecTableLineItemCharacteristicsFromContextLines(
+  item: TenderAiGoodItem,
+  contextLines: string[]
+): TenderAiGoodItem {
+  if ((item.characteristics?.length ?? 0) > 0) return item;
+  const nm = (item.name ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const codeCompact = (item.codes ?? "").replace(/\s/g, "").trim().toLowerCase();
+  const cleaned = contextLines
+    .map((s) => s.replace(/\s+$/, "").trim())
+    .filter((t) => t.length >= 3)
+    .filter((t) => !lineHasRub(t))
+    .filter((t) => !TABLE_HEADER_RE.test(t))
+    .filter((t) => {
+      if (nm && t.toLowerCase().replace(/\s+/g, " ").trim() === nm) return false;
+      if (/^\d{1,4}\s*[.)]\s+\S/.test(t)) return false;
+      return true;
+    })
+    .filter((t) => {
+      const tc = t.replace(/\s/g, "").toLowerCase();
+      if (codeCompact && tc === codeCompact) return false;
+      if (isTechSpecStandaloneKtruOrOkpdCodeLine(t)) return false;
+      return true;
+    });
+  if (cleaned.length === 0) return item;
+  const preMerged = mergeContinuationLinesForCharacteristics(cleaned);
+  const fromDetect = parseCharacteristicsForPositionBody(preMerged);
+  const relaxed = parseRelaxedColonAndTabCharacteristicLines(preMerged);
+  const rows = mergeCharacteristics([...fromDetect.rows, ...relaxed]);
+  if (rows.length === 0) return item;
+  return { ...item, characteristics: rows };
 }
 
 export type ParseTechSpecTableLineOpts = {
