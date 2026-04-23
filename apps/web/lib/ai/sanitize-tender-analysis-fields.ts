@@ -304,6 +304,58 @@ function stripTrailingProcFromValue(v: string): string {
     .trim();
 }
 
+function hasLetterToken(s: string): boolean {
+  return /[а-яёa-z]{3,}/i.test((s ?? "").replace(/\s+/g, " ").trim());
+}
+
+/**
+ * UI-эвристика: очень короткое/бессодержательное имя выглядит как заглушка,
+ * даже если характеристики уже полезные.
+ */
+function looksLikePlaceholderGoodsDisplayName(name: string): boolean {
+  const t = (name ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return true;
+  if (t.length < 8) return true;
+  if (!hasLetterToken(t)) return true;
+  return false;
+}
+
+function isGenericCharacteristicKeyForUi(key: string): boolean {
+  const k = (key ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (!k) return true;
+  if (k === "описание товара") return true;
+  if (k === "описание" || k === "примечание") return true;
+  return false;
+}
+
+function buildNonInventedTitleSuffixFromCharacteristics(rows: Array<{ name: string; value: string }>): string {
+  const candidates = rows
+    .map((r) => ({
+      k: (r.name ?? "").replace(/\s+/g, " ").trim(),
+      v: (r.value ?? "").replace(/\s+/g, " ").trim()
+    }))
+    .filter((r) => r.k.length >= 2 && r.v.length >= 1)
+    .filter((r) => !isGenericCharacteristicKeyForUi(r.k))
+    .filter((r) => !/^(?:да|нет)$/i.test(r.v))
+    .map((r) => {
+      let score = 0;
+      if (/\d/.test(r.v)) score += 3;
+      if (/%|°/.test(r.v)) score += 1;
+      if (r.v.length >= 6 && r.v.length <= 44) score += 2;
+      if (r.v.length <= 80) score += 1;
+      return { ...r, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const top = candidates[0];
+  if (!top) return "";
+  const v = top.v.length > 60 ? `${top.v.slice(0, 60)}…` : top.v;
+  const k = top.k.length > 32 ? `${top.k.slice(0, 32)}…` : top.k;
+  /** Если значение само по себе информативно (цифры/проценты) — не тащим длинное имя. */
+  if (/\d/.test(v) && v.length <= 18) return v;
+  return `${k}: ${v}`.slice(0, 72);
+}
+
 function isProceduralCharacteristicRow(name: string, value: string): boolean {
   const n = name.trim();
   const v = value.trim();
@@ -368,11 +420,19 @@ function cleanGoodsItemsCharacteristics(items: TenderAiGoodItem[]): TenderAiGood
       });
     }
     const merged = squeezeHeavyCharacteristicList(Array.from(byName.values()));
+    const baseName = stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion(
+      normalizeCelsiusRangeGarbles(polishGoodsDisplayName(g.name))
+    );
+    let displayName = baseName;
+    if (looksLikePlaceholderGoodsDisplayName(displayName)) {
+      const suffix = buildNonInventedTitleSuffixFromCharacteristics(
+        merged.map((x) => ({ name: x.name ?? "", value: x.value ?? "" }))
+      );
+      if (suffix) displayName = `${displayName} (${suffix})`.replace(/\s+/g, " ").trim();
+    }
     return {
       ...g,
-      name: stripOcrFalseDegreeMarkAfterPortCountOrUsbLikeMinorVersion(
-        normalizeCelsiusRangeGarbles(polishGoodsDisplayName(g.name))
-      ),
+      name: displayName,
       characteristics: merged
     };
   });

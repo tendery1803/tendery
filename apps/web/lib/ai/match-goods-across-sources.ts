@@ -1932,6 +1932,54 @@ export function reconcileGoodsItemsWithDocumentSources(
 
   const usedNoticeAnchorKeys = new Set<string>();
 
+  const hasLetterToken = (s: string) => /[а-яёa-z]{3,}/i.test((s ?? "").replace(/\s+/g, " ").trim());
+  const looksLikePlaceholderTitleForUi = (name: string) => {
+    const t = (name ?? "").replace(/\s+/g, " ").trim();
+    if (!t) return true;
+    if (t.length < 8) return true;
+    if (!hasLetterToken(t)) return true;
+    return false;
+  };
+  const isGenericCharacteristicKeyForUi = (key: string) => {
+    const k = (key ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!k) return true;
+    if (k === "описание товара") return true;
+    if (k === "описание" || k === "примечание") return true;
+    return false;
+  };
+  const buildTitleSuffixFromCharacteristics = (rows: TenderAiCharacteristicRow[]): string => {
+    const candidates = (rows ?? [])
+      .map((r) => ({
+        k: ((r as any)?.key ?? (r as any)?.name ?? "").replace(/\s+/g, " ").trim(),
+        v: ((r as any)?.value ?? "").replace(/\s+/g, " ").trim()
+      }))
+      .filter((r) => r.k.length >= 2 && r.v.length >= 1)
+      .filter((r) => !isGenericCharacteristicKeyForUi(r.k))
+      .filter((r) => !/^(?:да|нет)$/i.test(r.v))
+      .map((r) => {
+        let score = 0;
+        if (/\d/.test(r.v)) score += 3;
+        if (/%|°/.test(r.v)) score += 1;
+        if (r.v.length >= 6 && r.v.length <= 44) score += 2;
+        if (r.v.length <= 80) score += 1;
+        return { ...r, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    const top = candidates[0];
+    if (!top) return "";
+    const v = top.v.length > 60 ? `${top.v.slice(0, 60)}…` : top.v;
+    const k = top.k.length > 32 ? `${top.k.slice(0, 32)}…` : top.k;
+    if (/\d/.test(v) && v.length <= 18) return v;
+    return `${k}: ${v}`.slice(0, 72);
+  };
+  const enrichPlaceholderTitleFromCharacteristics = (name: string, rows: TenderAiCharacteristicRow[]): string => {
+    const t = (name ?? "").replace(/\s+/g, " ").trim();
+    if (!looksLikePlaceholderTitleForUi(t)) return t;
+    const suffix = buildTitleSuffixFromCharacteristics(rows);
+    if (!suffix) return t;
+    return `${t} (${suffix})`.replace(/\s+/g, " ").trim();
+  };
+
   for (const tz of bundle.items) {
     const tzNorm = normalizeGoodsMatchingKey(`${tz.name} ${tz.codes}`);
     const tzTokens = extractModelTokens(tzNorm);
@@ -2143,6 +2191,7 @@ export function reconcileGoodsItemsWithDocumentSources(
     let outName = finalName;
     const glueSyn = synthesizeGoodNameFromCharacteristicsWhenEisTovarShtukaGlued(outName, characteristics);
     if (glueSyn) outName = glueSyn;
+    outName = enrichPlaceholderTitleFromCharacteristics(outName, characteristics);
 
     const techWonQty = qtyChoice.source === "tech_spec";
     const tzPreferredUnit = ((tz.quantityUnit || "").trim() || (techWonQty ? (tz.unit || "").trim() : "")).trim();
