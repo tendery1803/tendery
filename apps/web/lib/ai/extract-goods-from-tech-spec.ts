@@ -4343,6 +4343,115 @@ function sliceContextLinesUntilNextCodeAnchor(windowLines: string[], anchorLine:
   return after.slice(0, end).slice(0, 24);
 }
 
+/** Строка похожа на значение графа ТЗ, а не на подпись для loose-пары «строка / следующая строка». */
+function lineLooksLikeLooseTechSpecValueOnlyLine(t: string): boolean {
+  const L = t.replace(/\s+/g, " ").trim();
+  if (L.length < 4) return true;
+  /** `\b` после кириллицы в JS ненадёжен — граница через явный пробел/цифру. */
+  if (/^(?:не\s+менее|не\s+более|не\s+ниже|не\s+выше)\s/i.test(L)) return true;
+  if (/^(?:да|нет)(?:[.,]\s*|\s*)$/i.test(L)) return true;
+  if (/^(?:для|под)\s+[а-яёА-ЯЁ]/i.test(L) && L.length <= 90) return true;
+  if (/^\d+[.,]\d+/.test(L)) return true;
+  if (/^\d+\s*[–-]\s*\d+/.test(L)) return true;
+  if (/^\d+(?:[.,]\d+)?\s*(?:%|°|кг|г|л|мл)(?=\s|[.,;)]|$)/i.test(L)) return true;
+  if (/^(?:от\s+\d|до\s+\d)/i.test(L)) return true;
+  if (/^\d+\s*(?:суток|сут|часов|час|дн[еяей]|месяц|лет)(?=\s|[.,;)]|$)/i.test(L)) return true;
+  return false;
+}
+
+/** Следующая строка похожа на новую подпись графа (без «:»), а не на значение к текущей подписи. */
+function lineLooksLikeLooseTechSpecHeaderWithoutColon(t: string): boolean {
+  const L = t.replace(/\s+/g, " ").trim();
+  if (L.length < 6 || L.length > 150) return false;
+  if (
+    /^(?:вид|тип|наличие|массовая|срок|условия|температур|назначен|объ[её]м|количеств|степень|уровень|содержан|качеств|характеристик)(?=\s|[,;(])/i.test(
+      L
+    )
+  ) {
+    return true;
+  }
+  if (/, %\s*$/.test(L)) return true;
+  if (/(?:^|\s)%\s*$/.test(L)) return true;
+  return false;
+}
+
+/**
+ * Вертикальный tech-spec / OOZ: после `mergeContinuationLinesForCharacteristics` часть граф
+ * идёт двумя строками «подпись» / «значение» без «:». Тогда `parseRelaxedColonAndTabCharacteristicLines`
+ * склеивает хвост в один `relaxedOrphan` → одно «Описание товара». Здесь поднимаем реальные пары
+ * из тех же строк (без домысла значений).
+ */
+function tryExtractVerticalOozeLooseGraphRowsFromContext(mergedLines: string[]): TenderAiCharacteristicRow[] {
+  const out: TenderAiCharacteristicRow[] = [];
+  const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+  for (let i = 0; i < mergedLines.length; i++) {
+    const raw = mergedLines[i]!;
+    const L = norm(raw);
+    if (L.length < 4 || PROC_CHAR_JUNK.test(L)) continue;
+    if (isTechSpecStandaloneKtruOrOkpdCodeLine(L)) continue;
+
+    if (L.includes(":")) {
+      for (const piece of splitVerticalSpecGluedGraphLines(raw.trim())) {
+        const tp = piece.replace(/\s+/g, " ").trim();
+        const m = tp.match(/^([А-Яа-яЁёA-Za-z0-9][^:]{0,400}?)\s*:\s*(.+)$/);
+        if (!m?.[1] || !m[2]) continue;
+        let name = canonicalCharacteristicName(m[1]!.trim());
+        if (CHARACTERISTIC_NAME_SIGNATORY_LINE_RE.test(name)) continue;
+        if (PROC_CHAR_JUNK.test(name)) continue;
+        let value = stripCorpusRoutingMarkerFromTechSpecValue(
+          truncateAppendedLegalBoilerplateFromDescriptionValue(name, m[2]!.trim())
+        );
+        if (name.length < 2 || value.length < 1) continue;
+        out.push({ name, value, sourceHint: "tech_spec" });
+      }
+      continue;
+    }
+
+    const next = i + 1 < mergedLines.length ? norm(mergedLines[i + 1]!) : "";
+    if (!next || next.length < 1) continue;
+    if (next.includes("\t") || next.includes(":")) continue;
+    if (/^\d{1,4}\s*[.)]\s+\S/.test(next)) continue;
+    if (isTechSpecStandaloneKtruOrOkpdCodeLine(next)) continue;
+    if (PROC_CHAR_JUNK.test(next)) continue;
+    if (/^(?:кг\.?|л\.?|шт\.?|г\.?|мл\.?|м2|м²|м3)$/i.test(next.replace(/\s/g, ""))) continue;
+    if (/^(?:количеств|кол-?\s*во|ед\.?\s*изм\.?|quantity)(?=\s|:|,)/i.test(L)) continue;
+    if (lineLooksLikeQtyLabelRow(L) || lineLooksLikeQuantityLabelButMeansPackageFilling(L)) continue;
+    if (lineLooksLikeCharacteristicRow(L)) continue;
+    if (lineLooksLikeLooseTechSpecValueOnlyLine(L)) continue;
+
+    const labelish =
+      /[а-яёa-z]{5,}/i.test(L) &&
+      L.length >= 8 &&
+      L.length <= 140 &&
+      !/^\d+[.,]\d+/.test(L) &&
+      !isNumericQuantityCell(L.replace(/\s/g, " "));
+
+    if (!labelish) continue;
+
+    if (lineLooksLikeLooseTechSpecHeaderWithoutColon(next)) continue;
+
+    const nextLooksQtyOnly = /^\d+(?:[.,]\d+)?\s*(?:кг|л|мл|г|шт\.?)?\s*$/i.test(next);
+    const valish =
+      nextLooksQtyOnly ||
+      /\d|%|°/.test(next) ||
+      (next.length <= 95 && /[а-яёa-z]{3,}/i.test(next) && next.length <= L.length + 35);
+
+    if (!valish) continue;
+
+    const name = canonicalCharacteristicName(L.slice(0, 200));
+    if (PROC_CHAR_JUNK.test(name)) continue;
+    const value = normalizeCelsiusRangeGarbles(
+      stripCorpusRoutingMarkerFromTechSpecValue(
+        truncateAppendedLegalBoilerplateFromDescriptionValue(name, next.slice(0, 1200))
+      )
+    );
+    if (value.length < 1) continue;
+    out.push({ name, value, sourceHint: "tech_spec" });
+    i++;
+  }
+  return out;
+}
+
 /**
  * Для `parseTechSpecTableLine` позиция часто выделяется без тела блока → characteristics пустые.
  * Поднимаем пары из соседних строк того же локального контекста (без выдумывания значений).
@@ -4372,9 +4481,19 @@ function enrichTechSpecTableLineItemCharacteristicsFromContextLines(
     });
   if (cleaned.length === 0) return item;
   const preMerged = mergeContinuationLinesForCharacteristics(cleaned);
+  const loose = tryExtractVerticalOozeLooseGraphRowsFromContext(preMerged);
   const fromDetect = parseCharacteristicsForPositionBody(preMerged);
   const relaxed = parseRelaxedColonAndTabCharacteristicLines(preMerged);
-  const rows = mergeCharacteristics([...fromDetect.rows, ...relaxed]);
+  const structured = loose.length >= 2;
+  const relaxedFiltered = structured
+    ? relaxed.filter((r) => {
+        const kn = (r.name ?? "").trim().toLowerCase();
+        if (/^описание/.test(kn) && (r.value ?? "").length > 120) return false;
+        return true;
+      })
+    : relaxed;
+  let rows = mergeCharacteristics([...fromDetect.rows, ...relaxedFiltered, ...loose]);
+  rows = rows.filter((r) => !lineLooksLikeLooseTechSpecValueOnlyLine(r.name ?? ""));
   if (rows.length === 0) return item;
   return { ...item, characteristics: rows };
 }
