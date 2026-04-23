@@ -10,6 +10,20 @@ import {
   runGoodsRegressionBatch,
   writeGoodsRegressionReportJson
 } from "@/lib/ai/goods-regression-batch";
+import { loadTenderDocumentsFromDir, runGoodsDocumentFirstPipelineFromInputs } from "@/lib/ai/goods-regression-batch";
+import {
+  buildGoodsParserPositionDiagnostics,
+  computeGoodsParserValidationMetrics,
+  formatGoodsParserValidationConsoleTable,
+  type GoodsParserPositionDiagnostic,
+  type GoodsParserValidationMetrics
+} from "@/lib/regression/goods-parser-validation";
+import {
+  computeGoodsUiCaseMetrics,
+  formatGoodsUiCaseConsoleTable,
+  type GoodsUiCaseMetrics,
+  type GoodsUiCaseTenderReport
+} from "@/lib/regression/goods-ui-case-validation";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +63,83 @@ async function main() {
     return;
   }
   console.log(formatGoodsRegressionConsoleTable(report.tenders));
+
+  /** Таблица A: parser validation; таблица B: UI-case — общий прогон pipeline на финальном output. */
+  const parserRows: GoodsParserValidationMetrics[] = [];
+  const uiRows: GoodsUiCaseTenderReport[] = [];
+  const diagnosticsTenders: {
+    tenderId: string;
+    refMeta: string;
+    parser: GoodsParserValidationMetrics;
+    ui: GoodsUiCaseMetrics;
+    positions: GoodsParserPositionDiagnostic[];
+  }[] = [];
+
+  for (const t of report.tenders) {
+    const fileInputs = await loadTenderDocumentsFromDir(t.tenderDir);
+    const pipe = runGoodsDocumentFirstPipelineFromInputs(fileInputs, null);
+    const parserM = computeGoodsParserValidationMetrics(t.tenderId, pipe, t.metrics);
+    const uiM = computeGoodsUiCaseMetrics(pipe.goodsItems);
+    parserRows.push(parserM);
+    uiRows.push({ tenderId: t.tenderId, metrics: uiM });
+    diagnosticsTenders.push({
+      tenderId: t.tenderId,
+      refMeta: parserM.refMeta,
+      parser: parserM,
+      ui: uiM,
+      positions: buildGoodsParserPositionDiagnostics(t.tenderId, pipe, pipe.goodsItems.length)
+    });
+  }
+
+  const uiOutJson = path.join(process.cwd(), "goods-ui-case-report.json");
+  const parserOutJson = path.join(process.cwd(), "goods-parser-validation-report.json");
+  const diagnosticsJson = path.join(process.cwd(), "goods-regression-diagnostics.json");
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(
+    parserOutJson,
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        regressionRoot: report.regressionRoot,
+        tenderCount: parserRows.length,
+        tenders: parserRows
+      },
+      null,
+      2
+    )
+  );
+  await writeFile(
+    uiOutJson,
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        regressionRoot: report.regressionRoot,
+        tenderCount: uiRows.length,
+        tenders: uiRows
+      },
+      null,
+      2
+    )
+  );
+  await writeFile(
+    diagnosticsJson,
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        regressionRoot: report.regressionRoot,
+        tenderCount: diagnosticsTenders.length,
+        tenders: diagnosticsTenders
+      },
+      null,
+      2
+    )
+  );
+
+  console.log(`\nparserJson: ${parserOutJson}`);
+  console.log(`parserDiagnosticsJson: ${diagnosticsJson}`);
+  console.log(`uiJson: ${uiOutJson}\n`);
+  console.log(formatGoodsParserValidationConsoleTable(parserRows));
+  console.log(`\n=== B. Goods UI-case validation ===\n${formatGoodsUiCaseConsoleTable(uiRows)}`);
 }
 
 main().catch((e) => {

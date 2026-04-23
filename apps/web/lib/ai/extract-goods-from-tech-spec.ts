@@ -2396,6 +2396,50 @@ function expandVerticalBareOrdinalDescriptionIfStunted(
   return out;
 }
 
+/**
+ * В теле графы «Описание товара» иногда остаётся только общий префикс категории, тогда как
+ * карточное наименование уже содержит модель/КТРУ/тип — без подтягивания хвоста сверка в UI пустая.
+ * Поднимаем только суффикс после общего префикса (не копируем всё имя целиком — иначе echo-strip).
+ */
+function clipVerticalBareOrdinalDescriptionTailFromGluedNameNoise(tail: string): string {
+  let t = tail.replace(/\s+/g, " ").trim();
+  /** Не используем `\\b` перед кириллицой: в JS граница слова ASCII-центрична. */
+  const cutAt = (s: string, re: RegExp): string => {
+    const m = s.match(re);
+    if (!m || m.index == null || m.index < 8) return s;
+    return s.slice(0, m.index).trim();
+  };
+  t = cutAt(t, /\s+Значение\s+характеристики/i);
+  t = cutAt(t, /\s+не\s+может\s+изменяться/i);
+  t = cutAt(t, /\s+участником\s+закупки/i);
+  t = cutAt(t, /\s+ТЕХНИЧЕСКОЕ\s+ЗАДАНИЕ/i);
+  t = cutAt(t, /###\s*Файл/i);
+  return t.replace(/[,;\s–-]+$/u, "").trim();
+}
+
+function expandVerticalBareOrdinalDescriptionFromCardNameTail(
+  productName: string,
+  rows: TenderAiCharacteristicRow[]
+): TenderAiCharacteristicRow[] {
+  const ix = rows.findIndex((r) => /^описание\s+товара$/i.test((r.name ?? "").trim()));
+  if (ix < 0) return rows;
+  const cur = (rows[ix]!.value ?? "").replace(/\s+/g, " ").trim();
+  const pn = productName.replace(/\s+/g, " ").trim();
+  if (!cur || !pn || pn.length < cur.length + 10) return rows;
+  const cLow = cur.toLowerCase();
+  const pLow = pn.toLowerCase();
+  if (!pLow.startsWith(cLow)) return rows;
+  if (cur.length > 58) return rows;
+  let tail = pn.slice(cur.length).trim().replace(/^[,;.\s–-]+/, "");
+  tail = clipVerticalBareOrdinalDescriptionTailFromGluedNameNoise(tail);
+  if (tail.length < 10) return rows;
+  /** Хвост должен нести сверочную конкретику: цифры (КТРУ/кол-во) или латинский артикул/модель. */
+  if (!/\d/.test(tail) && !/[A-Za-z]{2,}\s*\d|[A-Za-z]{2,}\d{2,}|[A-Za-z]{2,}-/i.test(tail)) return rows;
+  const out = rows.map((r) => ({ ...r }));
+  out[ix] = { ...out[ix]!, value: tail.slice(0, 12_000) };
+  return out;
+}
+
 function healVerticalBareOrdinalDescriptionAfterStrip(
   productName: string,
   rows: TenderAiCharacteristicRow[],
@@ -3229,6 +3273,8 @@ function parsePositionBlockStrictInternal(
     mergedChars = mergeCharacteristicsVerticalBareOrdinal(mergedChars, name);
     mergedChars = finalizeVerticalBareOrdinalCharacteristicLayers(mergedChars, name);
     mergedChars = expandVerticalBareOrdinalDescriptionIfStunted(name, mergedChars, preMerged);
+    mergedChars = mergeCharacteristicsVerticalBareOrdinal(mergedChars, name);
+    mergedChars = expandVerticalBareOrdinalDescriptionFromCardNameTail(name, mergedChars);
     mergedChars = mergeCharacteristicsVerticalBareOrdinal(mergedChars, name);
   }
   if (verticalBareOrdinalSpecSegment) {
